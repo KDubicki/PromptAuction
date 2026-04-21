@@ -8,7 +8,7 @@ class PlayerBid(BaseModel):
     item_name: str
     bid_amount: float
     won: bool = False
-    created_at: datetime = datetime.utcnow()
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 class GameSessionCreate(BaseModel):

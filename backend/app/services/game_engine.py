@@ -54,7 +54,7 @@ class GameEngineService:
             next_round += 1
 
         accepted_prompts = await db.prompts.find({"status": "accepted"}).to_list(length=500)
-        current_item = f"Unique Item R{next_round + 1}-I{next_iteration}"
+        current_item = f"Unique Item R{next_round}-I{next_iteration}"
 
         context = {
             "accepted_prompts": accepted_prompts,
