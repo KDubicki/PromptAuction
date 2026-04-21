@@ -1,0 +1,31 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: promptauction-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  backend:
+    build:
+      context: ./backend
+    container_name: promptauction-backend
+    env_file:
+      - ./backend/.env.example
+    ports:
+      - "8000:8000"
+    depends_on:
+      - mongo
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: promptauction-frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+volumes:
+  mongo_data:
