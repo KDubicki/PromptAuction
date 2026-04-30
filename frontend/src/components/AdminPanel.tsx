@@ -10,10 +10,6 @@ import {
 import { usePrompts, useUpdatePromptStatus } from '../api/hooks'
 import type { PromptSubmission } from '../types'
 
-interface Props {
-  isProtected: boolean
-}
-
 function PromptCard({ prompt }: { prompt: PromptSubmission }) {
   const updateStatus = useUpdatePromptStatus()
 
@@ -47,17 +43,18 @@ function PromptCard({ prompt }: { prompt: PromptSubmission }) {
   )
 }
 
-export function AdminPanel({ isProtected }: Props) {
+export function AdminPanel() {
   const { data: pendingPrompts = [] } = usePrompts('pending')
-
-  if (!isProtected) {
-    return <Typography color="warning.main">Admin panel is protected. Enable admin access first.</Typography>
-  }
 
   return (
     <Stack spacing={2}>
-      <Typography variant="h6">Admin Panel</Typography>
-      <Typography variant="body2">Review pending prompt submissions before starting a game.</Typography>
+      <Typography variant="h5">Admin Panel</Typography>
+      <Typography variant="body2" color="text.secondary">
+        Review pending prompt submissions before starting a game.
+      </Typography>
+      {pendingPrompts.length === 0 && (
+        <Typography color="text.secondary">No pending prompts to review.</Typography>
+      )}
       {pendingPrompts.map((prompt) => (
         <PromptCard key={prompt.id} prompt={prompt} />
       ))}
