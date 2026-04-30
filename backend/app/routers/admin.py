@@ -3,10 +3,14 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+from app.schemas.config import GameConfigOut, GameConfigUpdate
+from app.services.config_service import config_service
 from app.services.llm.manager import llm_manager
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
+
+# ── LLM Provider ──────────────────────────────────────────────────────────────
 
 class LLMProviderSwapRequest(BaseModel):
     provider: str = Field(..., description="Provider name: openai, anthropic, ollama")
@@ -55,3 +59,32 @@ async def get_llm_provider_info() -> LLMProviderInfoResponse:
 async def check_llm_health() -> LLMHealthResponse:
     result = await llm_manager.health_check()
     return LLMHealthResponse(**result)
+
+
+# ── Game Config ───────────────────────────────────────────────────────────────
+
+@router.get("/config", response_model=GameConfigOut)
+async def get_game_config() -> GameConfigOut:
+    return await config_service.get()
+
+
+@router.patch("/config", response_model=GameConfigOut)
+async def update_game_config(payload: GameConfigUpdate) -> GameConfigOut:
+    try:
+        return await config_service.update(payload, updated_by="admin")
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+@router.post("/config/reset", response_model=GameConfigOut)
+async def reset_game_config() -> GameConfigOut:
+    try:
+        return await config_service.reset_to_defaults(updated_by="admin")
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+@router.get("/config/history", response_model=list[GameConfigOut])
+async def get_config_history(limit: int = 20) -> list[GameConfigOut]:
+    return await config_service.get_history(limit=min(limit, 100))
+
