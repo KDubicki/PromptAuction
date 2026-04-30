@@ -78,18 +78,56 @@ Set optional frontend API URL via `.env`:
 VITE_API_BASE_URL=http://localhost:8000/api
 ```
 
-## Run the Full Stack with Docker Compose
+## Run the Full Stack with Podman
+
+### 1. Install Podman
+
+On macOS, install Podman and the compose helper:
+
+```bash
+brew install podman podman-compose
+```
+
+### 2. Start the Podman machine
+
+Podman on macOS runs containers inside a Linux VM:
+
+```bash
+podman machine init --now
+```
+
+If the machine already exists, start it with:
+
+```bash
+podman machine start
+```
+
+### 3. Start the app
 
 From repo root:
 
 ```bash
-docker compose up --build
+podman compose up --build
 ```
+
+If your Podman installation does not support `podman compose`, use:
+
+```bash
+podman-compose up --build
+```
+
+### 4. Open the app
 
 Services:
 - Frontend: `http://localhost:5173`
 - Backend API: `http://localhost:8000/api`
 - MongoDB: `mongodb://localhost:27017`
+
+To stop everything:
+
+```bash
+podman compose down
+```
 
 ## Local Development (Without Docker)
 
