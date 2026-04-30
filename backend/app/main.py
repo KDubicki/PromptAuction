@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from app.core.config import settings
 from app.db.mongo import mongo_manager
 from app.routers import admin, game_sessions, prompts, users
+from app.services.config_service import config_service
 from app.services.game_engine import game_engine_service
 from app.services.llm.manager import llm_manager
 
@@ -16,6 +17,10 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     await mongo_manager.connect()
+
+    # Load game config from DB into cache (or use defaults if none stored yet)
+    await config_service.get()
+    logger.info("Game config loaded")
 
     if settings.llm_api_key or settings.llm_provider == "ollama":
         llm_manager.configure(
