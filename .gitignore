@@ -26,3 +26,7 @@ Thumbs.db
 # AI scratch/notes
 .ai/
 .claude/
+
+# Test coverage
+.coverage
+.pytest_cache/
