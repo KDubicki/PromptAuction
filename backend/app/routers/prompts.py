@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from bson import ObjectId
 from fastapi import APIRouter, Header, HTTPException, status
@@ -51,7 +51,7 @@ async def receive_prompt_webhook(
         if existing:
             return _prompt_doc_to_out(existing)
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     doc = payload.model_dump() | {"status": "pending", "created_at": now, "updated_at": now}
     result = await db.prompts.insert_one(doc)
     doc["_id"] = result.inserted_id
@@ -75,7 +75,7 @@ async def update_prompt_status(prompt_id: str, payload: PromptSubmissionStatusUp
     if db is None:
         raise HTTPException(status_code=503, detail="Database not connected")
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     result = await db.prompts.update_one(
         {"_id": ObjectId(prompt_id)},
         {"$set": {"status": payload.status, "updated_at": now}},
@@ -84,4 +84,6 @@ async def update_prompt_status(prompt_id: str, payload: PromptSubmissionStatusUp
         raise HTTPException(status_code=404, detail="Prompt not found")
 
     prompt = await db.prompts.find_one({"_id": ObjectId(prompt_id)})
+    if prompt is None:
+        raise HTTPException(status_code=404, detail="Prompt not found")
     return _prompt_doc_to_out(prompt)

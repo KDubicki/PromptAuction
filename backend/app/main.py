@@ -1,5 +1,5 @@
 import logging
-
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
-async def lifespan(_: FastAPI):
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     await mongo_manager.connect()
 
     # Load game config from DB into cache (or use defaults if none stored yet)

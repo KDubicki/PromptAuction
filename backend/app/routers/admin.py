@@ -42,7 +42,7 @@ async def swap_llm_provider(payload: LLMProviderSwapRequest) -> LLMProviderInfoR
             base_url=payload.base_url,
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     return LLMProviderInfoResponse(provider=meta.provider, model=meta.model, temperature=meta.temperature)
 
@@ -73,7 +73,7 @@ async def update_game_config(payload: GameConfigUpdate) -> GameConfigOut:
     try:
         return await config_service.update(payload, updated_by="admin")
     except RuntimeError as e:
-        raise HTTPException(status_code=503, detail=str(e))
+        raise HTTPException(status_code=503, detail=str(e)) from e
 
 
 @router.post("/config/reset", response_model=GameConfigOut)
@@ -81,7 +81,7 @@ async def reset_game_config() -> GameConfigOut:
     try:
         return await config_service.reset_to_defaults(updated_by="admin")
     except RuntimeError as e:
-        raise HTTPException(status_code=503, detail=str(e))
+        raise HTTPException(status_code=503, detail=str(e)) from e
 
 
 @router.get("/config/history", response_model=list[GameConfigOut])

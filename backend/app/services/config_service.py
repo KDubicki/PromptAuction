@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from app.schemas.config import GameConfig, GameConfigOut, GameConfigUpdate
@@ -75,7 +75,7 @@ class ConfigService:
         updated_data = current.model_dump()
         updated_data.update(patches)
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         new_version = current.version + 1
 
         new_config = GameConfigOut(

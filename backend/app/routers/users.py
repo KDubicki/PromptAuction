@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from bson import ObjectId
 from fastapi import APIRouter, HTTPException, status
@@ -27,7 +27,7 @@ async def create_user(payload: UserCreate) -> UserOut:
     if db is None:
         raise HTTPException(status_code=503, detail="Database not connected")
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     doc = payload.model_dump() | {"created_at": now, "updated_at": now}
     result = await db.users.insert_one(doc)
     doc["_id"] = result.inserted_id
@@ -64,7 +64,7 @@ async def update_user(user_id: str, payload: UserUpdate) -> UserOut:
 
     updates = {k: v for k, v in payload.model_dump(exclude_unset=True).items() if v is not None}
     if updates:
-        updates["updated_at"] = datetime.now(timezone.utc)
+        updates["updated_at"] = datetime.now(UTC)
         await db.users.update_one({"_id": ObjectId(user_id)}, {"$set": updates})
 
     user = await db.users.find_one({"_id": ObjectId(user_id)})

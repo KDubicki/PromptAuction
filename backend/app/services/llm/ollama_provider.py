@@ -7,7 +7,8 @@ from app.services.llm.protocol import BidResult, LLMProvider, ModelMetadata
 
 logger = logging.getLogger(__name__)
 
-BID_SYSTEM_PROMPT = """You are an auction bidding AI. Given player prompts and a current item, generate bids for each player.
+BID_SYSTEM_PROMPT = """You are an auction bidding AI. Given player prompts and a current item, \
+generate bids for each player.
 Return a JSON array of objects with "player_id" and "bid_amount" (float, between 1.0 and 100.0).
 Only return the JSON array, no other text."""
 

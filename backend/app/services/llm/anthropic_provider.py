@@ -2,12 +2,14 @@ import json
 import logging
 
 from anthropic import AsyncAnthropic
+from anthropic.types import TextBlock
 
 from app.services.llm.protocol import BidResult, LLMProvider, ModelMetadata
 
 logger = logging.getLogger(__name__)
 
-BID_SYSTEM_PROMPT = """You are an auction bidding AI. Given player prompts and a current item, generate bids for each player.
+BID_SYSTEM_PROMPT = """You are an auction bidding AI. Given player prompts and a current item, \
+generate bids for each player.
 Return a JSON array of objects with "player_id" and "bid_amount" (float, between 1.0 and 100.0).
 Only return the JSON array, no other text."""
 
@@ -38,7 +40,10 @@ class AnthropicProvider:
                 system=BID_SYSTEM_PROMPT,
                 messages=[{"role": "user", "content": user_message}],
             )
-            content = response.content[0].text
+            block = response.content[0]
+            if not isinstance(block, TextBlock):
+                raise ValueError(f"Unexpected content block type: {type(block).__name__}")
+            content = block.text
             # Try to extract JSON from the response
             start = content.find("[")
             end = content.rfind("]") + 1

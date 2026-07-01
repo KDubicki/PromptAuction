@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from app.services.llm.protocol import BidResult, LLMProvider, ModelMetadata
+from app.services.llm.protocol import LLMProvider, ModelMetadata
 
 logger = logging.getLogger(__name__)
 

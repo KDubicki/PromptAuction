@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import UTC
 
-from app.core.config import settings
 from app.db.mongo import mongo_manager
 from app.services.llm_service import llm_service
 
@@ -78,9 +78,9 @@ class GameEngineService:
         }
         bids = await llm_service.generate_bids(context=context)
         if bids:
-            from datetime import datetime, timezone
+            from datetime import datetime
 
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             await db.player_bids.insert_many(
                 [
                     {
