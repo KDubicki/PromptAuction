@@ -22,3 +22,7 @@ Thumbs.db
 
 # Docker
 *.log
+
+# AI scratch/notes
+.ai/
+.claude/

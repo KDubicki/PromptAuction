@@ -33,7 +33,7 @@ function PromptStatusChecker() {
   return (
     <Paper sx={{ p: 3 }}>
       <Typography variant="h6" gutterBottom>Check Your Submission Status</Typography>
-      <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
+      <Stack direction="row" spacing={2} sx={{ alignItems: 'center', mb: 2 }}>
         <TextField
           size="small"
           label="Your Player ID"
@@ -55,7 +55,7 @@ function PromptStatusChecker() {
       )}
 
       {filteredPrompts.map((p) => (
-        <Stack key={p.id} direction="row" spacing={2} alignItems="center" sx={{ py: 0.5 }}>
+        <Stack key={p.id} direction="row" spacing={2} sx={{ alignItems: 'center', py: 0.5 }}>
           <Typography variant="body2" sx={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {p.prompt_text}
           </Typography>
@@ -108,10 +108,10 @@ export function SubmitPromptPage() {
               p: 3,
             }}
           >
-            <Typography color="text.secondary" textAlign="center">
+            <Typography color="text.secondary" sx={{ textAlign: 'center' }}>
               Google Form not configured. Set <code>VITE_GOOGLE_FORM_URL</code> in your <code>.env</code> file.
             </Typography>
-            <Typography variant="body2" color="text.secondary" textAlign="center">
+            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center' }}>
               Example: VITE_GOOGLE_FORM_URL=https://docs.google.com/forms/d/e/YOUR_FORM_ID/viewform?embedded=true
             </Typography>
           </Box>
