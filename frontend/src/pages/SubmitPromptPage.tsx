@@ -1,19 +1,17 @@
 import { useState } from 'react'
-import {
-  Alert,
-  Box,
-  Button,
-  Chip,
-  Divider,
-  Paper,
-  Stack,
-  TextField,
-  Typography,
-} from '@mui/material'
+import { Box, Button, Chip, Stack, TextField, Typography } from '@mui/material'
 
+import { Panel } from '../components/Panel'
 import { usePrompts } from '../api/hooks'
+import type { PromptStatus } from '../types'
 
 const GOOGLE_FORM_URL = import.meta.env.VITE_GOOGLE_FORM_URL as string | undefined
+
+const STATUS_COLOR: Record<PromptStatus, 'success' | 'error' | 'default'> = {
+  accepted: 'success',
+  rejected: 'error',
+  pending: 'default',
+}
 
 function PromptStatusChecker() {
   const [playerId, setPlayerId] = useState('')
@@ -31,94 +29,101 @@ function PromptStatusChecker() {
   }
 
   return (
-    <Paper sx={{ p: 3 }}>
-      <Typography variant="h6" gutterBottom>Check Your Submission Status</Typography>
-      <Stack direction="row" spacing={2} sx={{ alignItems: 'center', mb: 2 }}>
-        <TextField
-          size="small"
-          label="Your Player ID"
-          value={playerId}
-          onChange={(e) => { setPlayerId(e.target.value); setSearching(false) }}
-          onKeyDown={(e) => e.key === 'Enter' && handleCheck()}
-        />
-        <Button
-          variant="outlined"
-          onClick={handleCheck}
-          disabled={!playerId.trim() || isFetching}
-        >
-          {isFetching ? 'Checking...' : 'Check'}
-        </Button>
-      </Stack>
-
-      {searching && filteredPrompts.length === 0 && (
-        <Typography color="text.secondary">No submissions found for "{playerId}".</Typography>
-      )}
-
-      {filteredPrompts.map((p) => (
-        <Stack key={p.id} direction="row" spacing={2} sx={{ alignItems: 'center', py: 0.5 }}>
-          <Typography variant="body2" sx={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {p.prompt_text}
-          </Typography>
-          <Chip
+    <Panel title="Check your submission">
+      <Stack spacing={2.5}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ alignItems: 'stretch' }}>
+          <TextField
             size="small"
-            label={p.status}
-            color={p.status === 'accepted' ? 'success' : p.status === 'rejected' ? 'error' : 'default'}
+            label="Your player ID"
+            value={playerId}
+            onChange={(e) => {
+              setPlayerId(e.target.value)
+              setSearching(false)
+            }}
+            onKeyDown={(e) => e.key === 'Enter' && handleCheck()}
+            sx={{ flex: 1, minWidth: 0 }}
           />
+          <Button
+            variant="outlined"
+            onClick={handleCheck}
+            disabled={!playerId.trim() || isFetching}
+            sx={{ flexShrink: 0 }}
+          >
+            {isFetching ? 'Checking…' : 'Check'}
+          </Button>
         </Stack>
-      ))}
-    </Paper>
+
+        {searching && filteredPrompts.length === 0 && (
+          <Typography sx={{ color: 'text.secondary' }}>
+            Nothing found for “{playerId}”. Check the ID you submitted with.
+          </Typography>
+        )}
+
+        {filteredPrompts.map((p) => (
+          <Stack
+            key={p.id}
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={1.5}
+            sx={{
+              alignItems: { xs: 'flex-start', sm: 'center' },
+              justifyContent: 'space-between',
+              borderTop: 1,
+              borderColor: 'divider',
+              pt: 2,
+            }}
+          >
+            <Typography variant="body2" sx={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>
+              {p.prompt_text}
+            </Typography>
+            <Chip size="small" label={p.status} color={STATUS_COLOR[p.status]} />
+          </Stack>
+        ))}
+      </Stack>
+    </Panel>
   )
 }
 
 export function SubmitPromptPage() {
   return (
     <Stack spacing={3}>
-      <Typography variant="h5">Submit Your Prompt</Typography>
-      <Alert severity="info">
-        Submit a strategic prompt that will guide an AI agent to bid on items during the auction.
-        Be creative — your prompt determines how aggressively or strategically your agent will bid!
-      </Alert>
+      <Stack spacing={1}>
+        <Typography variant="h3" component="h1">
+          Submit a prompt
+        </Typography>
+        <Typography sx={{ color: 'text.secondary', maxWidth: '60ch' }}>
+          Your prompt is the whole strategy. It drives an agent that bids blind against every other
+          agent — it never sees their numbers, and they never see yours.
+        </Typography>
+      </Stack>
 
-      <Paper sx={{ p: 2 }}>
+      <Panel title="Entry form" flush>
         {GOOGLE_FORM_URL ? (
           <Box
             component="iframe"
             src={GOOGLE_FORM_URL}
+            title="Submit prompt form"
             sx={{
+              display: 'block',
               width: '100%',
-              minHeight: 600,
+              height: { xs: 560, sm: 700 },
               border: 'none',
-              borderRadius: 1,
             }}
-            title="Submit Prompt Form"
           />
         ) : (
-          <Box
-            sx={{
-              width: '100%',
-              minHeight: 300,
-              border: '1px dashed',
-              borderColor: 'divider',
-              borderRadius: 1,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexDirection: 'column',
-              gap: 2,
-              p: 3,
-            }}
+          <Stack
+            spacing={1.5}
+            sx={{ alignItems: 'center', textAlign: 'center', px: { xs: 2, sm: 4 }, py: 6 }}
           >
-            <Typography color="text.secondary" sx={{ textAlign: 'center' }}>
-              Google Form not configured. Set <code>VITE_GOOGLE_FORM_URL</code> in your <code>.env</code> file.
+            <Typography sx={{ color: 'text.secondary' }}>
+              No entry form is configured yet.
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center' }}>
-              Example: VITE_GOOGLE_FORM_URL=https://docs.google.com/forms/d/e/YOUR_FORM_ID/viewform?embedded=true
+            <Typography variant="body2" sx={{ color: 'text.disabled', maxWidth: '52ch' }}>
+              Set <Box component="code">VITE_GOOGLE_FORM_URL</Box> in{' '}
+              <Box component="code">frontend/.env</Box> to the form&apos;s embed URL, then rebuild.
             </Typography>
-          </Box>
+          </Stack>
         )}
-      </Paper>
-
-      <Divider />
+      </Panel>
 
       <PromptStatusChecker />
     </Stack>

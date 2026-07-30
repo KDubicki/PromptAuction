@@ -26,6 +26,7 @@ Thumbs.db
 # AI scratch/notes
 .ai/
 .claude/
+DESIGN_PLAN.md
 
 # Test coverage
 .coverage

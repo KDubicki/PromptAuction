@@ -33,7 +33,7 @@ describe('router', () => {
 
   it('renders the GamePage at the index route', () => {
     renderRouter()
-    expect(screen.getByText('Live Game Dashboard')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Live game' })).toBeInTheDocument()
   })
 
   it('navigates to the admin route', async () => {
@@ -41,7 +41,7 @@ describe('router', () => {
     await act(async () => {
       await router.navigate('/admin')
     })
-    expect(screen.getByText('Admin Panel')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Admin' })).toBeInTheDocument()
   })
 
   it('navigates to the leaderboard route', async () => {
@@ -57,7 +57,7 @@ describe('router', () => {
     await act(async () => {
       await router.navigate('/submit')
     })
-    expect(screen.getByText('Submit Your Prompt')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Submit a prompt' })).toBeInTheDocument()
   })
 
   it('renders the NotFoundPage for unknown routes', async () => {

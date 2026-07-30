@@ -1,4 +1,7 @@
-import { Card, CardContent, Stack, Typography } from '@mui/material'
+import { Stack, Typography } from '@mui/material'
+
+import { LiveIndicator } from './LiveIndicator'
+import { Panel } from './Panel'
 
 interface Props {
   state: string
@@ -7,14 +10,22 @@ interface Props {
 
 export function LiveGameStateView({ state, item }: Props) {
   return (
-    <Card>
-      <CardContent>
-        <Stack spacing={1}>
-          <Typography variant="h6">Live Game State</Typography>
-          <Typography>State: {state}</Typography>
-          <Typography>Current Item: {item}</Typography>
+    <Panel title="Engine" action={<LiveIndicator live={state === 'running'} />}>
+      <Stack spacing={2.5}>
+        <Stack spacing={0.25}>
+          <Typography variant="overline" sx={{ color: 'text.secondary' }}>
+            State
+          </Typography>
+          <Typography sx={{ textTransform: 'capitalize' }}>{state}</Typography>
         </Stack>
-      </CardContent>
-    </Card>
+
+        <Stack spacing={0.25}>
+          <Typography variant="overline" sx={{ color: 'text.secondary' }}>
+            Current item
+          </Typography>
+          <Typography sx={{ overflowWrap: 'anywhere' }}>{item}</Typography>
+        </Stack>
+      </Stack>
+    </Panel>
   )
 }

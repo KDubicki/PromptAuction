@@ -4,13 +4,19 @@ import { describe, expect, it } from 'vitest'
 import { GamePage } from './GamePage'
 
 describe('GamePage', () => {
-  it('renders the dashboard sections with their seed data', () => {
+  it('renders the dashboard panels with their seed data', () => {
     render(<GamePage />)
-    expect(screen.getByText('Live Game Dashboard')).toBeInTheDocument()
-    expect(screen.getByText('Live Game State')).toBeInTheDocument()
-    expect(screen.getByText('Action Arena')).toBeInTheDocument()
-    expect(screen.getByText('Leaderboard & Inventory')).toBeInTheDocument()
-    expect(screen.getByText('Player Inventories')).toBeInTheDocument()
-    expect(screen.getByText('Bidding History')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Live game' })).toBeInTheDocument()
+    expect(screen.getByText('Engine')).toBeInTheDocument()
+    expect(screen.getByText('Action arena')).toBeInTheDocument()
+    expect(screen.getByText('Leaderboard')).toBeInTheDocument()
+    expect(screen.getByText('Inventories')).toBeInTheDocument()
+    expect(screen.getByText('Bidding history')).toBeInTheDocument()
+  })
+
+  it('leads with the lot on the block', () => {
+    render(<GamePage />)
+    expect(screen.getByText('On the block')).toBeInTheDocument()
+    expect(screen.getByText('p1 · 31')).toBeInTheDocument()
   })
 })

@@ -43,23 +43,34 @@ By default the API client points to `http://localhost:8000/api`.
 ```text
 frontend/src/
 ├── main.tsx                    # Entry point, renders <App />
-├── App.tsx                     # Main layout: AppBar, Tabs, Grid
-├── App.css                     # Global styles
-├── index.css                   # CSS reset
+├── App.tsx                     # QueryClientProvider + RouterProvider
+├── router.tsx                  # Route table (createBrowserRouter)
+├── index.css                   # Font imports + reset
 ├── types.ts                    # Shared TypeScript types
 ├── api/
 │   ├── client.ts               # Axios instance configuration
 │   └── hooks.ts                # React Query hooks
-├── assets/                     # Static assets
+├── theme/
+│   ├── tokens.ts               # Palette, type faces, radii
+│   ├── index.ts                # buildTheme(mode) — MUI theme + overrides
+│   └── useColorMode.ts         # OS-following mode with persisted override
+├── layouts/
+│   └── RootLayout.tsx          # App bar + responsive drawer nav
+├── pages/                      # One per route
 └── components/
-    ├── ActionArena.tsx          # Auction arena — live bids
-    ├── AdminPanel.tsx           # Admin panel (accept/reject prompts)
-    ├── BiddingHistoryTable.tsx  # Bidding history table
+    ├── Panel.tsx                # Shared surface: title, mono slug, action
+    ├── Figure.tsx               # Labelled mono figure
+    ├── DataTable.tsx            # Table that stacks into cards below `sm`
+    ├── BidLadder.tsx            # Sealed-bid reveal on a value axis
+    ├── LiveIndicator.tsx        # Engine heartbeat
+    ├── ActionArena.tsx          # Current lot + BidLadder
+    ├── AdminPanel.tsx           # Prompt review queue (accept/reject)
+    ├── BiddingHistoryTable.tsx  # Bidding history
     ├── DarkModeToggle.tsx       # Dark/light mode toggle
-    ├── LeaderboardInventory.tsx # Leaderboard + inventory
-    ├── LiveGameStateView.tsx    # Game state (running/paused/completed)
+    ├── LeaderboardInventory.tsx # Ranked agents + lots held
+    ├── LiveGameStateView.tsx    # Engine state
     ├── PlayerInventories.tsx    # Per-player inventories
-    └── StatusHeader.tsx         # Header: Round x/y, Iteration x/y
+    └── StatusHeader.tsx         # Round/iteration/lot/hammer strip
 ```
 
 ## Application Architecture
@@ -105,12 +116,30 @@ interface LeaderboardEntry {
 
 ### Theming
 
-The app uses MUI `createTheme` with dynamic dark/light mode switching:
+Tokens live in `src/theme/tokens.ts`; `buildTheme(mode)` in `src/theme/index.ts`
+turns them into the MUI theme, including component overrides. `RootLayout`
+builds the theme and provides it.
+
 ```typescript
-const theme = createTheme({ palette: { mode: darkMode ? 'dark' : 'light' } })
+const { mode, toggle } = useColorMode()
+const theme = useMemo(() => buildTheme(mode), [mode])
 ```
 
-The `darkMode` state is managed in `App.tsx` and provided via `ThemeProvider`.
+Conventions worth keeping:
+
+- **Brass (`primary`) means "won".** Hammer price, winning bid, rank 01, the
+  active nav rail. Nothing decorative uses it.
+- **Every figure is mono and tabular.** Use `Figure`, `caption`/`overline`
+  variants, or `DataTable`'s `figure: true` so numbers align down a column.
+- **Fonts are bundled** via `@fontsource` imports in `index.css` — no CDN, so
+  the container works offline. Adding a weight means adding an import.
+- **Contrast**: text tokens are chosen to clear 4.5:1 against `rostrum` in both
+  modes. Re-check if you change them.
+- **Tables use `DataTable`**, which stacks into labelled cards below `sm`.
+  Do not add a raw `<Table>` that scrolls horizontally on a phone.
+
+`useColorMode` follows `prefers-color-scheme` and only persists an explicit
+toggle, so the app keeps tracking the OS until the operator overrides it.
 
 ## Coding Conventions
 
@@ -172,11 +201,12 @@ In docker-compose the frontend is accessible on port **5173** (mapping 5173:80).
 ## Pending Work
 
 1. **WebSocket integration** — live updates from game engine (replace polling)
-2. **Routing** — React Router for subpages (currently using Tabs)
+2. **Real data** — leaderboard, inventories and bidding history are still
+   hardcoded mocks; `BidLadder` needs a real sealed/revealed flag from the engine
 3. **Authentication** — protect Admin Panel
-4. **Tests** — no tests yet (add Vitest + Testing Library)
-5. **Responsiveness** — verify mobile breakpoints
-6. **Error boundaries** — component-level error handling
+4. **SPA fallback** — nginx 404s on deep links (`/admin` etc.); the image needs
+   `try_files $uri $uri/ /index.html;`
+5. **Error boundaries** — component-level error handling
 7. **Storybook** — isolated component development (optional)
 
 ## Backend Interaction

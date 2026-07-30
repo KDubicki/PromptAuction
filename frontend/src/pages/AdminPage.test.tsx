@@ -17,6 +17,7 @@ describe('AdminPage', () => {
     vi.mocked(hooks.useUpdatePromptStatus).mockReturnValue({ mutate: vi.fn() } as any)
 
     render(<AdminPage />)
-    expect(screen.getByText('Admin Panel')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Admin' })).toBeInTheDocument()
+    expect(screen.getByText('Review queue')).toBeInTheDocument()
   })
 })

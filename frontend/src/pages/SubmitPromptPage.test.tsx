@@ -29,15 +29,15 @@ describe('SubmitPromptPage', () => {
     mockPrompts([])
     const { SubmitPromptPage } = await import('./SubmitPromptPage')
     render(<SubmitPromptPage />)
-    expect(screen.getByText(/Google Form not configured/)).toBeInTheDocument()
+    expect(screen.getByText('No entry form is configured yet.')).toBeInTheDocument()
   })
 
-  it('embeds the Google Form iframe when VITE_GOOGLE_FORM_URL is set', async () => {
+  it('embeds the entry form when VITE_GOOGLE_FORM_URL is set', async () => {
     vi.stubEnv('VITE_GOOGLE_FORM_URL', 'https://docs.google.com/forms/d/e/abc/viewform?embedded=true')
     mockPrompts([])
     const { SubmitPromptPage } = await import('./SubmitPromptPage')
     render(<SubmitPromptPage />)
-    expect(screen.getByTitle('Submit Prompt Form')).toHaveAttribute(
+    expect(screen.getByTitle('Submit prompt form')).toHaveAttribute(
       'src',
       'https://docs.google.com/forms/d/e/abc/viewform?embedded=true',
     )
@@ -54,7 +54,7 @@ describe('SubmitPromptPage', () => {
     mockPrompts([], { isFetching: true })
     const { SubmitPromptPage } = await import('./SubmitPromptPage')
     render(<SubmitPromptPage />)
-    expect(screen.getByRole('button', { name: 'Checking...' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Checking…' })).toBeDisabled()
   })
 
   it('shows a no-results message when searching finds nothing', async () => {
@@ -63,10 +63,10 @@ describe('SubmitPromptPage', () => {
     const { SubmitPromptPage } = await import('./SubmitPromptPage')
     render(<SubmitPromptPage />)
 
-    await user.type(screen.getByLabelText('Your Player ID'), 'ghost')
+    await user.type(screen.getByLabelText('Your player ID'), 'ghost')
     await user.click(screen.getByRole('button', { name: 'Check' }))
 
-    expect(await screen.findByText('No submissions found for "ghost".')).toBeInTheDocument()
+    expect(await screen.findByText(/Nothing found for/)).toHaveTextContent('ghost')
   })
 
   it('filters and displays matching submissions with status chips', async () => {
@@ -79,7 +79,7 @@ describe('SubmitPromptPage', () => {
     const { SubmitPromptPage } = await import('./SubmitPromptPage')
     render(<SubmitPromptPage />)
 
-    await user.type(screen.getByLabelText('Your Player ID'), 'p1')
+    await user.type(screen.getByLabelText('Your player ID'), 'p1')
     await user.click(screen.getByRole('button', { name: 'Check' }))
 
     expect(await screen.findByText('Bid low.')).toBeInTheDocument()
@@ -95,7 +95,7 @@ describe('SubmitPromptPage', () => {
     const { SubmitPromptPage } = await import('./SubmitPromptPage')
     render(<SubmitPromptPage />)
 
-    await user.type(screen.getByLabelText('Your Player ID'), 'p9{Enter}')
+    await user.type(screen.getByLabelText('Your player ID'), 'p9{Enter}')
 
     expect(await screen.findByText('Only bid on shiny things.')).toBeInTheDocument()
     expect(screen.getByText('pending')).toBeInTheDocument()

@@ -27,20 +27,24 @@ export function GamePage() {
     <Stack spacing={3}>
       <StatusHeader round={2} totalRounds={50} iteration={15} totalIterations={45} />
 
-      <Grid container spacing={2}>
-        <Grid size={{ xs: 12, md: 4 }}>
-          <LiveGameStateView state="running" item="Crystal Fox" />
-        </Grid>
-        <Grid size={{ xs: 12, md: 8 }}>
+      <Grid container spacing={{ xs: 2, sm: 3 }}>
+        {/* The arena leads — everything else is context for it. */}
+        <Grid size={{ xs: 12, lg: 8 }}>
           <ActionArena currentItem="Crystal Fox" liveBids={liveBids} />
         </Grid>
+        {/* Sized to its content — a short panel stretched to the arena's height reads as broken. */}
+        <Grid size={{ xs: 12, lg: 4 }} sx={{ alignSelf: 'start' }}>
+          <LiveGameStateView state="running" item="Crystal Fox" />
+        </Grid>
+
         <Grid size={{ xs: 12, md: 6 }}>
           <LeaderboardInventory entries={leaderboard} />
         </Grid>
         <Grid size={{ xs: 12, md: 6 }}>
           <PlayerInventories players={leaderboard} />
         </Grid>
-        <Grid size={{ xs: 12 }}>
+
+        <Grid size={12}>
           <BiddingHistoryTable bids={bids} />
         </Grid>
       </Grid>

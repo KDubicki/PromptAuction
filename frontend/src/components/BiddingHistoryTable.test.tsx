@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { BiddingHistoryTable } from './BiddingHistoryTable'
 
 describe('BiddingHistoryTable', () => {
-  it('renders a row per bid, showing Yes/No for won', () => {
+  it('renders a row per bid with its outcome', () => {
     render(
       <BiddingHistoryTable
         bids={[
@@ -13,16 +13,17 @@ describe('BiddingHistoryTable', () => {
         ]}
       />,
     )
-    expect(screen.getByText('Bidding History')).toBeInTheDocument()
+    expect(screen.getByText('Bidding history')).toBeInTheDocument()
+    expect(screen.getByText('2 bids')).toBeInTheDocument()
     expect(screen.getByText('p1')).toBeInTheDocument()
     expect(screen.getByText('28')).toBeInTheDocument()
-    expect(screen.getByText('Yes')).toBeInTheDocument()
-    expect(screen.getByText('No')).toBeInTheDocument()
+    expect(screen.getByText('Won')).toBeInTheDocument()
+    expect(screen.getByText('Outbid')).toBeInTheDocument()
   })
 
-  it('renders an empty table when there are no bids', () => {
+  it('shows an empty state when no bids have been recorded', () => {
     render(<BiddingHistoryTable bids={[]} />)
-    expect(screen.getByText('Bidding History')).toBeInTheDocument()
-    expect(screen.queryByRole('row', { name: /p1/ })).not.toBeInTheDocument()
+    expect(screen.getByText('Bidding history')).toBeInTheDocument()
+    expect(screen.getByText('No bids recorded yet.')).toBeInTheDocument()
   })
 })
