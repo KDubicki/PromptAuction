@@ -5,7 +5,7 @@ PromptAuction is an AI-driven auction game where players submit strategic prompt
 ## Project Structure
 
 ```text
-/home/runner/work/PromptAuction/PromptAuction
+PromptAuction/
 ├── frontend/                # React + Vite + TypeScript + MUI dashboard
 ├── backend/                 # FastAPI + Motor + Pydantic backend
 └── docker-compose.yml       # Frontend + Backend + MongoDB orchestration
