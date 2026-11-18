@@ -28,3 +28,7 @@ class PromptSubmissionOut(BaseModel):
     form_response_id: str | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
+    player_ref: str | None = None
+    version: int | None = None
+    source: str | None = None
+    identity_warning: str | None = None

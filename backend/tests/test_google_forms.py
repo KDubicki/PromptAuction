@@ -346,7 +346,11 @@ async def test_connect_imports_existing_responses(client: AsyncClient, mock_db: 
         ("Alice", "alice@example.com", "pending"),
         ("Bob", "bob@example.com", "pending"),
     ]
-    assert prompts[0]["source"] == "google_forms"
+    assert all(p["source"] == "google_forms" and p["version"] == 1 for p in prompts)
+    players = await mock_db.players.find({}).sort("name", 1).to_list(length=None)
+    assert [p["name"] for p in players] == ["Alice", "Bob"]
+    assert all(p["current_version_id"] is None for p in players)
+    assert {str(p["_id"]) for p in players} == {v["player_ref"] for v in prompts}
     # BSON dates have millisecond precision; the form's submission time is kept, not the import time.
     assert prompts[0]["created_at"] == datetime(2026, 11, 18, 10, 0, 0, 123000)
 
@@ -383,18 +387,30 @@ async def test_sync_skips_response_already_received_by_webhook(
 async def test_sync_tolerates_duplicate_key_race(
     client: AsyncClient, mock_db: AsyncIOMotorDatabase, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from pymongo.errors import DuplicateKeyError
+    from pymongo import ASCENDING
 
+    await mock_db.prompts.create_index([("form_response_id", ASCENDING)], unique=True, sparse=True)
     _install_client(_google(pages=[{"responses": [_response("r1", "Alice", "A prompt")]}]))
 
-    async def _raise(_self: object, _doc: dict) -> None:
-        raise DuplicateKeyError("dup")
+    real_find_one = type(mock_db.prompts).find_one
+    raced = {"done": False}
 
-    # mongomock_motor hands out a fresh collection wrapper per attribute access, so patch the class.
-    monkeypatch.setattr(type(mock_db.prompts), "insert_one", _raise)
+    async def _racing_find_one(self: object, *args: object, **kwargs: object) -> object:
+        result = await real_find_one(self, *args, **kwargs)  # type: ignore[arg-type]
+        query = args[0] if args else {}
+        if isinstance(query, dict) and "form_response_id" in query and not raced["done"]:
+            raced["done"] = True
+            # The webhook wins the race between the existence check and the insert.
+            await mock_db.prompts.insert_one(
+                {"player_id": "Alice", "prompt_text": "A", "status": "pending", "form_response_id": "r1"}
+            )
+        return result
+
+    monkeypatch.setattr(type(mock_db.prompts), "find_one", _racing_find_one)
     resp = await client.put("/api/admin/google-form", json={"url": EDIT_URL})
     assert resp.status_code == 200
-    assert resp.json()["form"]["imported_count"] == 0
+    assert raced["done"]
+    assert await mock_db.prompts.count_documents({"form_response_id": "r1"}) == 1
 
 
 async def test_sync_failure_is_recorded_on_the_source(client: AsyncClient) -> None:
