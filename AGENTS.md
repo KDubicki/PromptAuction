@@ -165,8 +165,7 @@ Frontend dev server: http://localhost:5173
 | `frontend/src/api/hooks.ts`              | React Query hooks (prompts, sessions)      |
 | `frontend/src/types.ts`                  | TypeScript types                           |
 | `frontend/src/components/AdminPanel.tsx`  | Admin panel (accept/reject prompts)        |
-| `frontend/src/components/ActionArena.tsx` | Auction arena (live bids)                  |
-| `frontend/src/components/StatusHeader.tsx`| Round/iteration header                     |
+| `frontend/src/components/ActionArena.tsx` | Lot, hammer price, bid ladder, progress    |
 | `frontend/src/components/GoogleFormSourcePanel.tsx`| Connect the Google Form (admin)  |
 
 ## Coding Conventions

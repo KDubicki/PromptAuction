@@ -3,7 +3,7 @@ import { Box, Card, Stack, Typography } from '@mui/material'
 
 interface Props {
   title: string
-  /** Mono corner slug — position in the run, e.g. "LOT 04 / 45". */
+  /** Mono corner slug — a count or position, e.g. "3 waiting". */
   slug?: string
   action?: ReactNode
   children: ReactNode
@@ -12,8 +12,8 @@ interface Props {
 }
 
 /**
- * The shared console surface. Every panel states what it is, and optionally
- * where it sits in the run, before showing data.
+ * The shared console surface. The title names the panel; the slug sits quietly
+ * in the corner so the title stays the first thing read.
  */
 export function Panel({ title, slug, action, children, flush = false }: Props) {
   return (
@@ -22,24 +22,26 @@ export function Panel({ title, slug, action, children, flush = false }: Props) {
         direction="row"
         sx={{
           alignItems: 'center',
-          justifyContent: 'space-between',
           gap: 2,
           px: { xs: 2, sm: 2.5 },
-          py: 1.75,
+          minHeight: 56,
+          py: 1.25,
           borderBottom: 1,
           borderColor: 'divider',
         }}
       >
-        <Stack sx={{ minWidth: 0 }}>
-          {slug && (
-            <Typography variant="overline" sx={{ color: 'text.secondary' }} data-figure>
-              {slug}
-            </Typography>
-          )}
-          <Typography variant="h6" sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
-            {title}
+        <Typography variant="h6" component="h2" sx={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>
+          {title}
+        </Typography>
+        {slug && (
+          <Typography
+            variant="overline"
+            data-figure
+            sx={{ color: 'text.secondary', flexShrink: 0, whiteSpace: 'nowrap' }}
+          >
+            {slug}
           </Typography>
-        </Stack>
+        )}
         {action && <Box sx={{ flexShrink: 0 }}>{action}</Box>}
       </Stack>
 

@@ -1,50 +1,52 @@
-import { Grid, Stack } from '@mui/material'
+import { Grid, Stack, Typography } from '@mui/material'
 
-import { StatusHeader } from '../components/StatusHeader'
 import { ActionArena } from '../components/ActionArena'
-import { LeaderboardInventory } from '../components/LeaderboardInventory'
 import { BiddingHistoryTable } from '../components/BiddingHistoryTable'
-import { LiveGameStateView } from '../components/LiveGameStateView'
-import { PlayerInventories } from '../components/PlayerInventories'
+import { LeaderboardInventory } from '../components/LeaderboardInventory'
 
+// Seed data until the dashboard reads live sessions. Kept internally consistent:
+// the ladder, the standings and the history all describe the same lots.
 const leaderboard = [
-  { playerId: 'p1', winRate: 67, items: ['Crystal Fox', 'Nebula Coin'] },
-  { playerId: 'p2', winRate: 50, items: ['Echo Blade'] },
-]
-
-const bids = [
-  { player_id: 'p1', item_name: 'Crystal Fox', bid_amount: 28, won: true },
-  { player_id: 'p2', item_name: 'Crystal Fox', bid_amount: 19, won: false },
+  { playerId: 'Aurelia', winRate: 67, items: ['Crystal Fox', 'Nebula Coin'] },
+  { playerId: 'Kestrel', winRate: 33, items: ['Echo Blade'] },
+  { playerId: 'Morrow', winRate: 0, items: [] },
 ]
 
 const liveBids = [
-  { player: 'p1', bid: 31 },
-  { player: 'p2', bid: 29 },
+  { player: 'Aurelia', bid: 31 },
+  { player: 'Kestrel', bid: 29 },
+  { player: 'Morrow', bid: 18 },
+]
+
+const bids = [
+  { player_id: 'Aurelia', item_name: 'Crystal Fox', bid_amount: 31, won: true },
+  { player_id: 'Kestrel', item_name: 'Crystal Fox', bid_amount: 29, won: false },
+  { player_id: 'Morrow', item_name: 'Crystal Fox', bid_amount: 18, won: false },
+  { player_id: 'Kestrel', item_name: 'Echo Blade', bid_amount: 24, won: true },
+  { player_id: 'Aurelia', item_name: 'Echo Blade', bid_amount: 22, won: false },
 ]
 
 export function GamePage() {
   return (
     <Stack spacing={3}>
-      <StatusHeader round={2} totalRounds={50} iteration={15} totalIterations={45} />
+      <Typography variant="h3" component="h1">
+        Live game
+      </Typography>
+
+      <ActionArena
+        currentItem="Crystal Fox"
+        liveBids={liveBids}
+        round={2}
+        totalRounds={50}
+        iteration={15}
+        totalIterations={45}
+      />
 
       <Grid container spacing={{ xs: 2, sm: 3 }}>
-        {/* The arena leads — everything else is context for it. */}
-        <Grid size={{ xs: 12, lg: 8 }}>
-          <ActionArena currentItem="Crystal Fox" liveBids={liveBids} />
-        </Grid>
-        {/* Sized to its content — a short panel stretched to the arena's height reads as broken. */}
-        <Grid size={{ xs: 12, lg: 4 }} sx={{ alignSelf: 'start' }}>
-          <LiveGameStateView state="running" item="Crystal Fox" />
-        </Grid>
-
-        <Grid size={{ xs: 12, md: 6 }}>
+        <Grid size={{ xs: 12, md: 5 }}>
           <LeaderboardInventory entries={leaderboard} />
         </Grid>
-        <Grid size={{ xs: 12, md: 6 }}>
-          <PlayerInventories players={leaderboard} />
-        </Grid>
-
-        <Grid size={12}>
+        <Grid size={{ xs: 12, md: 7 }}>
           <BiddingHistoryTable bids={bids} />
         </Grid>
       </Grid>
