@@ -43,13 +43,14 @@ export function buildTheme(mode: ColorMode): Theme {
       body1: { fontSize: '1rem', lineHeight: 1.6 },
       body2: { fontSize: '0.875rem', lineHeight: 1.55 },
       button: { fontWeight: 600, textTransform: 'none', letterSpacing: 0 },
-      // The utility register: panel slugs, column heads, status labels.
+      // The utility register: panel slugs, column heads, status labels. Sentence
+      // case — mono already sets these apart, so they do not need to shout.
       overline: {
         fontFamily: fonts.data,
-        fontSize: '0.6875rem',
+        fontSize: '0.75rem',
         fontWeight: 500,
-        letterSpacing: '0.12em',
-        textTransform: 'uppercase',
+        letterSpacing: '0.01em',
+        textTransform: 'none',
         lineHeight: 1.4,
       },
       caption: { fontFamily: fonts.data, fontSize: '0.75rem', letterSpacing: '0.01em' },
@@ -117,10 +118,9 @@ export function buildTheme(mode: ColorMode): Theme {
           root: { borderBottomColor: divider },
           head: {
             fontFamily: fonts.data,
-            fontSize: '0.6875rem',
+            fontSize: '0.75rem',
             fontWeight: 500,
-            letterSpacing: '0.12em',
-            textTransform: 'uppercase',
+            letterSpacing: '0.01em',
             color: t.secondary,
             whiteSpace: 'nowrap',
           },

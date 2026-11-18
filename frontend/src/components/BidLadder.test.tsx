@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { BidLadder } from './BidLadder'
 
@@ -69,5 +69,61 @@ describe('BidLadder', () => {
     for (const bid of tight) {
       expect(screen.getByText(`${bid.player} · ${bid.amount}`)).toBeInTheDocument()
     }
+  })
+})
+
+describe('BidLadder label lanes', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  function stubPlotWidth(width: number) {
+    const disconnect = vi.fn()
+    class FakeResizeObserver {
+      callback: ResizeObserverCallback
+      disconnect = disconnect
+      constructor(callback: ResizeObserverCallback) {
+        this.callback = callback
+      }
+      observe() {
+        this.callback([{ contentRect: { width } } as ResizeObserverEntry], this as unknown as ResizeObserver)
+      }
+    }
+    vi.stubGlobal('ResizeObserver', FakeResizeObserver)
+    return disconnect
+  }
+
+  const NAMED = [
+    { player: 'Aurelia', amount: 31 },
+    { player: 'Kestrel', amount: 29 },
+    { player: 'Morrow', amount: 18 },
+  ]
+
+  function laneOf(text: string): string | null | undefined {
+    return screen.getByText(text).closest('[data-lane]')?.getAttribute('data-lane')
+  }
+
+  it('keeps wide labels on one lane when the plot is wide enough', () => {
+    stubPlotWidth(1200)
+    render(<BidLadder bids={NAMED} revealed />)
+    expect(laneOf('Morrow · 18')).toBe('0')
+    expect(laneOf('Kestrel · 29')).toBe('0')
+  })
+
+  it('moves a label up a lane when it would overlap on a narrow plot', () => {
+    const disconnect = stubPlotWidth(300)
+    const { unmount } = render(<BidLadder bids={NAMED} revealed />)
+    expect(laneOf('Morrow · 18')).toBe('0')
+    expect(laneOf('Kestrel · 29')).toBe('1')
+    expect(laneOf('Aurelia · 31')).toBe('2')
+    unmount()
+    expect(disconnect).toHaveBeenCalled()
+  })
+
+  it('ignores a zero-width measurement', () => {
+    stubPlotWidth(0)
+    render(<BidLadder bids={NAMED} revealed />)
+    // Falls back to the default width, where these labels fit on one lane.
+    expect(laneOf('Kestrel · 29')).toBe('0')
   })
 })

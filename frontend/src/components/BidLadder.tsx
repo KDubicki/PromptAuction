@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { Box, Stack, Typography } from '@mui/material'
 
 export interface LadderBid {
@@ -16,25 +16,58 @@ interface Props {
 
 /** Lanes keep close bids from colliding without moving them off their value. */
 const LANES = 3
-const MIN_GAP_PCT = 13
+/** Plot width assumed until the real one is measured (and in environments that cannot measure). */
+const DEFAULT_PLOT_WIDTH = 640
+/** Labels are mono `caption` (12px), so width follows character count closely. */
+const CHAR_PX = 7.3
+const LABEL_PADDING_PX = 16
+const LABEL_GAP_PX = 6
 
 interface PlacedBid extends LadderBid {
   pct: number
   lane: number
 }
 
-function place(bids: LadderBid[], scaleMax: number): PlacedBid[] {
-  const lastInLane = Array<number>(LANES).fill(-Infinity)
+function labelText(bid: LadderBid, revealed: boolean): string {
+  return revealed ? `${bid.player} · ${bid.amount}` : bid.player
+}
+
+/**
+ * Assigns each bid the lowest lane where its label clears the previous label in
+ * that lane. Measured in pixels, because what collides is the label, and its
+ * width depends on the agent's name, not on the bid.
+ */
+function place(bids: LadderBid[], scaleMax: number, plotWidth: number, revealed: boolean): PlacedBid[] {
+  const lastInLane: Array<{ x: number; half: number } | null> = Array(LANES).fill(null)
 
   return [...bids]
     .sort((a, b) => a.amount - b.amount)
     .map((bid) => {
       const pct = scaleMax > 0 ? Math.min(100, (bid.amount / scaleMax) * 100) : 0
-      let lane = lastInLane.findIndex((last) => pct - last > MIN_GAP_PCT)
+      const x = (pct / 100) * plotWidth
+      const half = (labelText(bid, revealed).length * CHAR_PX + LABEL_PADDING_PX) / 2
+      let lane = lastInLane.findIndex((last) => last === null || x - last.x > last.half + half + LABEL_GAP_PX)
       if (lane === -1) lane = 0
-      lastInLane[lane] = pct
+      lastInLane[lane] = { x, half }
       return { ...bid, pct, lane }
     })
+}
+
+function usePlotWidth(): [(node: HTMLElement | null) => void, number] {
+  const [width, setWidth] = useState(DEFAULT_PLOT_WIDTH)
+  const observer = useRef<ResizeObserver | null>(null)
+
+  const ref = useCallback((node: HTMLElement | null) => {
+    observer.current?.disconnect()
+    observer.current = null
+    if (!node || typeof ResizeObserver === 'undefined') return
+    observer.current = new ResizeObserver(([entry]) => {
+      if (entry.contentRect.width > 0) setWidth(entry.contentRect.width)
+    })
+    observer.current.observe(node)
+  }, [])
+
+  return [ref, width]
 }
 
 function roundedCeiling(highest: number): number {
@@ -56,7 +89,8 @@ export function BidLadder({ bids, revealed, scaleMax }: Props) {
   const highest = sorted[0]
   const runnerUp = sorted[1]
   const max = scaleMax ?? roundedCeiling(highest?.amount ?? 0)
-  const placed = useMemo(() => place(bids, max), [bids, max])
+  const [plotRef, plotWidth] = usePlotWidth()
+  const placed = useMemo(() => place(bids, max, plotWidth, revealed), [bids, max, plotWidth, revealed])
 
   if (bids.length === 0) {
     return (
@@ -93,6 +127,7 @@ export function BidLadder({ bids, revealed, scaleMax }: Props) {
       </Stack>
 
       <Box
+        ref={plotRef}
         role="group"
         aria-label={
           revealed
@@ -113,11 +148,15 @@ export function BidLadder({ bids, revealed, scaleMax }: Props) {
           return (
             <Box
               key={bid.player}
+              data-lane={bid.lane}
               sx={{
                 position: 'absolute',
                 bottom: 24,
                 left: `${revealed ? bid.pct : 0}%`,
                 transform: 'translateX(-50%)',
+                // Lower lanes sit on top, so a stem rising to a higher lane tucks
+                // behind a neighbouring label instead of striking through it.
+                zIndex: LANES - bid.lane,
                 transition: 'left 700ms cubic-bezier(0.22, 0.61, 0.36, 1), opacity 400ms ease',
                 transitionDelay: `${index * 70}ms`,
                 opacity: revealed ? 1 : 0.55,

@@ -1,4 +1,4 @@
-import { Stack, Typography } from '@mui/material'
+import { Box, Stack, Typography } from '@mui/material'
 
 import { DataTable, type Column } from '../components/DataTable'
 import { Panel } from '../components/Panel'
@@ -12,9 +12,9 @@ interface Standing {
 }
 
 const mockLeaderboard: Standing[] = [
-  { rank: 1, player: 'p1', wins: 12, winRate: 67, elo: 1450 },
-  { rank: 2, player: 'p2', wins: 8, winRate: 50, elo: 1320 },
-  { rank: 3, player: 'p3', wins: 5, winRate: 33, elo: 1180 },
+  { rank: 1, player: 'Aurelia', wins: 12, winRate: 67, elo: 1450 },
+  { rank: 2, player: 'Kestrel', wins: 8, winRate: 50, elo: 1320 },
+  { rank: 3, player: 'Morrow', wins: 5, winRate: 33, elo: 1180 },
 ]
 
 const columns: Column<Standing>[] = [
@@ -58,14 +58,17 @@ export function LeaderboardPage() {
         </Typography>
       </Stack>
 
-      <Panel title="Standings" slug={`${mockLeaderboard.length} agents`} flush>
-        <DataTable
-          columns={columns}
-          rows={mockLeaderboard}
-          rowKey={(row) => String(row.rank)}
-          emptyMessage="No rounds have completed yet."
-        />
-      </Panel>
+      {/* Five short columns read as one row only when the table is not stretched edge to edge. */}
+      <Box sx={{ maxWidth: 880 }}>
+        <Panel title="Standings" slug={`${mockLeaderboard.length} agents`} flush>
+          <DataTable
+            columns={columns}
+            rows={mockLeaderboard}
+            rowKey={(row) => String(row.rank)}
+            emptyMessage="No rounds have completed yet."
+          />
+        </Panel>
+      </Box>
     </Stack>
   )
 }

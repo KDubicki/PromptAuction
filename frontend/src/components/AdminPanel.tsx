@@ -1,61 +1,55 @@
-import { Box, Button, Card, Stack, Typography } from '@mui/material'
+import { Box, Button, Stack, Typography } from '@mui/material'
 
 import { GoogleFormSourcePanel } from './GoogleFormSourcePanel'
 import { Panel } from './Panel'
 import { usePrompts, useUpdatePromptStatus } from '../api/hooks'
 import type { PromptSubmission } from '../types'
 
-function PromptCard({ prompt }: { prompt: PromptSubmission }) {
+function PromptRow({ prompt, last }: { prompt: PromptSubmission; last: boolean }) {
   const updateStatus = useUpdatePromptStatus()
   const pending = updateStatus.isPending
 
   return (
-    <Card>
-      <Stack spacing={2} sx={{ p: { xs: 2, sm: 2.5 } }}>
-        <Stack
-          direction="row"
-          sx={{ gap: 1.5, alignItems: 'baseline', justifyContent: 'space-between' }}
-        >
-          <Typography variant="overline" sx={{ color: 'text.secondary' }}>
-            {prompt.player_id}
-          </Typography>
-          <Typography variant="overline" sx={{ color: 'text.disabled' }}>
-            {prompt.status}
-          </Typography>
-        </Stack>
-
-        {/* The prompt is the artefact under review — give it room. */}
-        <Typography
-          sx={{
-            borderLeft: 2,
-            borderColor: 'divider',
-            pl: 2,
-            overflowWrap: 'anywhere',
-            color: 'text.primary',
-          }}
-        >
+    <Stack
+      component="li"
+      direction={{ xs: 'column', md: 'row' }}
+      sx={{
+        gap: { xs: 1.5, md: 3 },
+        alignItems: { md: 'center' },
+        px: { xs: 2, sm: 2.5 },
+        py: 2.25,
+        borderBottom: last ? 0 : 1,
+        borderColor: 'divider',
+      }}
+    >
+      <Stack spacing={0.5} sx={{ flex: 1, minWidth: 0 }}>
+        <Typography sx={{ fontWeight: 600, overflowWrap: 'anywhere' }}>{prompt.player_id}</Typography>
+        {/* The prompt is the thing under review — full body size, readable measure. */}
+        <Typography sx={{ maxWidth: '72ch', overflowWrap: 'anywhere' }}>
           {prompt.prompt_text}
         </Typography>
-
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-          <Button
-            variant="contained"
-            disabled={pending}
-            onClick={() => updateStatus.mutate({ id: prompt.id, status: 'accepted' })}
-          >
-            Accept
-          </Button>
-          <Button
-            variant="outlined"
-            color="error"
-            disabled={pending}
-            onClick={() => updateStatus.mutate({ id: prompt.id, status: 'rejected' })}
-          >
-            Reject
-          </Button>
-        </Stack>
       </Stack>
-    </Card>
+
+      <Stack direction="row" spacing={1} sx={{ flexShrink: 0 }}>
+        <Button
+          variant="contained"
+          disabled={pending}
+          onClick={() => updateStatus.mutate({ id: prompt.id, status: 'accepted' })}
+          sx={{ flex: { xs: 1, md: 'none' } }}
+        >
+          Accept
+        </Button>
+        <Button
+          variant="outlined"
+          color="error"
+          disabled={pending}
+          onClick={() => updateStatus.mutate({ id: prompt.id, status: 'rejected' })}
+          sx={{ flex: { xs: 1, md: 'none' } }}
+        >
+          Reject
+        </Button>
+      </Stack>
+    </Stack>
   )
 }
 
@@ -75,21 +69,17 @@ export function AdminPanel() {
 
       <GoogleFormSourcePanel />
 
-      <Panel
-        title="Review queue"
-        slug={`${pendingPrompts.length} pending`}
-        action={<Button variant="contained">Initialize session</Button>}
-      >
+      <Panel title="Review queue" slug={`${pendingPrompts.length} pending`} flush>
         {pendingPrompts.length === 0 ? (
-          <Box sx={{ py: 4, textAlign: 'center' }}>
+          <Box sx={{ px: 2.5, py: 5, textAlign: 'center' }}>
             <Typography sx={{ color: 'text.secondary' }}>
               The queue is clear. New submissions land here for review.
             </Typography>
           </Box>
         ) : (
-          <Stack spacing={2}>
-            {pendingPrompts.map((prompt) => (
-              <PromptCard key={prompt.id} prompt={prompt} />
+          <Stack component="ul" sx={{ listStyle: 'none', m: 0, p: 0 }}>
+            {pendingPrompts.map((prompt, index) => (
+              <PromptRow key={prompt.id} prompt={prompt} last={index === pendingPrompts.length - 1} />
             ))}
           </Stack>
         )}

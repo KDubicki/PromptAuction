@@ -63,14 +63,12 @@ frontend/src/
     ├── DataTable.tsx            # Table that stacks into cards below `sm`
     ├── BidLadder.tsx            # Sealed-bid reveal on a value axis
     ├── LiveIndicator.tsx        # Engine heartbeat
-    ├── ActionArena.tsx          # Current lot + BidLadder
+    ├── ActionArena.tsx          # The rostrum: lot, hammer price, BidLadder, round progress
     ├── AdminPanel.tsx           # Prompt review queue (accept/reject)
+    ├── GoogleFormSourcePanel.tsx # Connect the Google Form players submit through
     ├── BiddingHistoryTable.tsx  # Bidding history
     ├── DarkModeToggle.tsx       # Dark/light mode toggle
-    ├── LeaderboardInventory.tsx # Ranked agents + lots held
-    ├── LiveGameStateView.tsx    # Engine state
-    ├── PlayerInventories.tsx    # Per-player inventories
-    └── StatusHeader.tsx         # Round/iteration/lot/hammer strip
+    └── LeaderboardInventory.tsx # Ranked agents + lots held
 ```
 
 ## Application Architecture
@@ -137,6 +135,9 @@ Conventions worth keeping:
   modes. Re-check if you change them.
 - **Tables use `DataTable`**, which stacks into labelled cards below `sm`.
   Do not add a raw `<Table>` that scrolls horizontally on a phone.
+- **Labels are sentence case.** `overline` is mono but not uppercased; a
+  panel's count or position goes in `Panel`'s `slug`, in the header's right
+  corner, never as an eyebrow above the title.
 
 `useColorMode` follows `prefers-color-scheme` and only persists an explicit
 toggle, so the app keeps tracking the OS until the operator overrides it.
@@ -174,21 +175,16 @@ Flat config (`eslint.config.js`):
 - Grid layout with MUI Grid v2 (`size` prop)
 
 ### `AdminPanel.tsx`
-- Displays pending prompts
-- Accept/Reject buttons call `useUpdatePromptStatus()`
-- Placeholder "Initialize Game" button
+- `GoogleFormSourcePanel` (connect / sync / disconnect the entry form) above the review queue
+- Review queue rows: player, prompt, Accept/Reject calling `useUpdatePromptStatus()`
 
 ### `ActionArena.tsx`
-- Props: `currentItem: string`, `liveBids: { player: string, bid: number }[]`
-- Displays current item + live bids list
+- Props: `currentItem`, `liveBids`, `revealed`, `round`, `totalRounds`, `iteration`, `totalIterations`
+- Lot name and hammer price lead; `BidLadder` below; round progress along the bottom edge
 
-### `StatusHeader.tsx`
-- Props: `round`, `totalRounds`, `iteration`, `totalIterations`
-- Alert showing current round info
-
-### `LiveGameStateView.tsx`
-- Props: `state`, `item`
-- Card with game status
+### `BidLadder.tsx`
+- Sealed-bid reveal on a value axis. Labels that would overlap move up a lane;
+  overlap is measured in pixels against the plot's real width (`ResizeObserver`)
 
 ## Docker Build
 
