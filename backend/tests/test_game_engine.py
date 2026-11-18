@@ -21,6 +21,15 @@ async def _make_session(mock_db, **overrides) -> dict:
         "status": "running",
         "current_round": 0,
         "current_iteration": 0,
+        "roster": [
+            {
+                "player_ref": "pref-aurelia",
+                "name": "Aurelia",
+                "version_id": "v1",
+                "version": 1,
+                "prompt_text": "Bid high.",
+            }
+        ],
     }
     doc.update(overrides)
     result = await mock_db.game_sessions.insert_one(doc)
@@ -49,6 +58,42 @@ async def test_run_iteration_advances_iteration_and_stores_bids(
     assert bids[0]["bid_amount"] == 50.0
     assert bids[0]["won"] is False
     assert bids[0]["session_id"] == str(session["_id"])
+
+
+async def test_run_iteration_uses_only_pinned_roster(mock_db, monkeypatch: pytest.MonkeyPatch) -> None:
+    await mock_db.prompts.insert_one(
+        {"player_id": "Outsider", "prompt_text": "Sneaky.", "status": "accepted"}
+    )
+    session = await _make_session(mock_db)
+    generate_bids = AsyncMock(return_value=[])
+    monkeypatch.setattr(llm_service, "generate_bids", generate_bids)
+
+    engine = GameEngineService()
+    await engine._run_iteration(session)
+
+    context = generate_bids.call_args.kwargs["context"]
+    assert context["accepted_prompts"] == [{"player_id": "Aurelia", "prompt_text": "Bid high."}]
+
+
+async def test_bids_carry_player_ref(mock_db, monkeypatch: pytest.MonkeyPatch) -> None:
+    session = await _make_session(mock_db)
+    monkeypatch.setattr(
+        llm_service,
+        "generate_bids",
+        AsyncMock(
+            return_value=[
+                {"player_id": "Aurelia", "bid_amount": 50.0},
+                {"player_id": "Ghost", "bid_amount": 60.0},
+            ]
+        ),
+    )
+
+    engine = GameEngineService()
+    await engine._run_iteration(session)
+
+    bids = await mock_db.player_bids.find({}).to_list(length=10)
+    by_name = {b["player_id"]: b["player_ref"] for b in bids}
+    assert by_name == {"Aurelia": "pref-aurelia", "Ghost": None}
 
 
 async def test_run_iteration_clamps_bid_to_config_bounds(mock_db, monkeypatch: pytest.MonkeyPatch) -> None:

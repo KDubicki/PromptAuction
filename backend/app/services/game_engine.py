@@ -64,7 +64,11 @@ class GameEngineService:
             next_iteration = 1
             next_round += 1
 
-        accepted_prompts = await db.prompts.find({"status": "accepted"}).to_list(length=500)
+        roster = session.get("roster") or []
+        accepted_prompts = [
+            {"player_id": r["name"], "prompt_text": r["prompt_text"]} for r in roster if r.get("prompt_text")
+        ]
+        player_refs = {r["name"]: r.get("player_ref") for r in roster}
         current_item = f"Unique Item R{next_round}-I{next_iteration}"
 
         context = {
@@ -85,6 +89,7 @@ class GameEngineService:
                 [
                     {
                         "player_id": bid["player_id"],
+                        "player_ref": player_refs.get(bid["player_id"]),
                         "item_name": current_item,
                         "bid_amount": max(cfg.bid_min, min(cfg.bid_max, float(bid["bid_amount"]))),
                         "won": False,
