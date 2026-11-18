@@ -19,38 +19,57 @@ function PlayerForm({ player, onClose }: { player: Player | null; onClose: () =>
   const [prompt, setPrompt] = useState(player?.current_version?.prompt_text ?? '')
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState({ name: player?.name ?? '', email: player?.email ?? '' })
 
   const nextVersion = (player?.current_version?.version ?? 0) + 1
-  const canSubmit = name.trim() !== '' && (player !== null || prompt.trim() !== '') && !saving
+  const trimmedName = name.trim()
+  const trimmedEmail = email.trim()
+  const trimmedPrompt = prompt.trim()
+  const promptChanged = trimmedPrompt !== (player?.current_version?.prompt_text ?? '').trim()
+
+  const nameError = trimmedName.length < 1 || trimmedName.length > 100 ? 'Nick must be 1–100 characters.' : null
+  const emailError = trimmedEmail.length > 320 ? 'Email must be at most 320 characters.' : null
+  const promptError =
+    (player === null || promptChanged) && (trimmedPrompt.length < 3 || trimmedPrompt.length > 2000)
+      ? 'Prompt must be 3–2000 characters.'
+      : null
+  const canSubmit = !nameError && !emailError && !promptError && !saving
 
   const submit = async () => {
     setError(null)
     setSaving(true)
+    let profileApplied = false
     try {
       if (player === null) {
         await create.mutateAsync({
-          name: name.trim(),
-          email: email.trim() || undefined,
-          prompt_text: prompt.trim(),
+          name: trimmedName,
+          email: trimmedEmail || undefined,
+          prompt_text: trimmedPrompt,
         })
       } else {
-        const nameChanged = name.trim() !== player.name
-        const emailChanged = email.trim() !== (player.email ?? '')
-        const promptChanged = prompt.trim() !== (player.current_version?.prompt_text ?? '').trim()
+        const nameChanged = trimmedName !== saved.name
+        const emailChanged = trimmedEmail !== saved.email
         if (nameChanged || emailChanged) {
           await update.mutateAsync({
             id: player.id,
-            ...(nameChanged && { name: name.trim() }),
-            ...(emailChanged && { email: email.trim() }),
+            ...(nameChanged && { name: trimmedName }),
+            ...(emailChanged && { email: trimmedEmail }),
           })
+          profileApplied = true
+          setSaved({ name: trimmedName, email: trimmedEmail })
         }
-        if (promptChanged && prompt.trim()) {
-          await addVersion.mutateAsync({ id: player.id, prompt_text: prompt.trim() })
+        if (promptChanged) {
+          await addVersion.mutateAsync({ id: player.id, prompt_text: trimmedPrompt })
         }
       }
       onClose()
     } catch (e) {
-      setError(apiErrorMessage(e))
+      const message = apiErrorMessage(e)
+      setError(
+        profileApplied
+          ? `Saved the nick and email, but the new prompt version failed: ${message}`
+          : message,
+      )
     } finally {
       setSaving(false)
     }
@@ -61,12 +80,17 @@ function PlayerForm({ player, onClose }: { player: Player | null; onClose: () =>
       <DialogTitle>{player ? 'Edit player' : 'Add player'}</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ pt: 1 }}>
-          <TextField label="Nick" value={name} onChange={(e) => setName(e.target.value)} autoFocus fullWidth />
+          <TextField label="Nick" value={name} onChange={(e) => setName(e.target.value)} autoFocus fullWidth
+            error={!!nameError && name !== ''}
+            helperText={name !== '' && nameError ? nameError : undefined}
+          />
           <TextField
             label="Email (optional)"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             fullWidth
+            error={!!emailError}
+            helperText={emailError ?? undefined}
           />
           <TextField
             label="Prompt"
@@ -75,7 +99,14 @@ function PlayerForm({ player, onClose }: { player: Player | null; onClose: () =>
             multiline
             minRows={4}
             fullWidth
-            helperText={player ? `Saving a changed prompt creates version ${nextVersion}.` : undefined}
+            error={!!promptError && prompt !== ''}
+            helperText={
+              promptError && prompt !== ''
+                ? promptError
+                : player
+                  ? `Saving a changed prompt creates version ${nextVersion}.`
+                  : undefined
+            }
           />
           {error && <Alert severity="error">{error}</Alert>}
         </Stack>
