@@ -1,10 +1,51 @@
 export type PromptStatus = 'pending' | 'accepted' | 'rejected'
 
+export type PromptSource = 'admin' | 'google_forms' | 'webhook' | 'migration'
+
 export interface PromptSubmission {
   id: string
   player_id: string
   prompt_text: string
   status: PromptStatus
+  player_ref?: string | null
+  version?: number | null
+  source?: PromptSource | null
+  identity_warning?: string | null
+  email?: string | null
+}
+
+export interface PromptVersion {
+  id: string
+  version: number
+  prompt_text: string
+  status: PromptStatus
+  source: PromptSource
+  player_name: string
+  identity_warning: string | null
+  email: string | null
+  created_at: string | null
+}
+
+export interface Player {
+  id: string
+  name: string
+  email: string | null
+  current_version: PromptVersion | null
+  pending_versions: number
+  created_at: string | null
+}
+
+export interface PlayerDetail extends Player {
+  versions: PromptVersion[]
+}
+
+export interface RosterEntry {
+  player_ref: string
+  name: string
+  current_version: number | null
+  version_id: string | null
+  version: number | null
+  prompt_text: string | null
 }
 
 export interface PlayerBid {
@@ -14,12 +55,19 @@ export interface PlayerBid {
   won: boolean
 }
 
+export type GameStatus = 'pending' | 'running' | 'paused' | 'completed'
+
 export interface GameSession {
   id: string
   name: string
-  status: string
+  status: GameStatus
+  roster: RosterEntry[]
+  start_blockers: string[]
   current_round: number
   current_iteration: number
+  started_at: string | null
+  created_at?: string | null
+  updated_at?: string | null
 }
 
 export interface GoogleFormSource {

@@ -8,11 +8,21 @@ import { AxiosError, AxiosHeaders } from 'axios'
 
 import {
   apiErrorMessage,
+  useAddPromptVersion,
+  useAddToRoster,
   useConnectGoogleForm,
+  useCreateGameSession,
+  useCreatePlayer,
+  useDeletePlayer,
   useDisconnectGoogleForm,
   useEntryForm,
   useGameSessions,
   useGoogleFormStatus,
+  usePlayer,
+  usePlayers,
+  useRemoveFromRoster,
+  useStartGameSession,
+  useUpdatePlayer,
   usePrompts,
   useSyncGoogleForm,
   useUpdatePromptStatus,
@@ -105,7 +115,16 @@ describe('useGameSessions', () => {
     const { result } = renderHook(() => useGameSessions(), { wrapper: createWrapper() })
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     expect(result.current.data).toEqual([
-      { id: '1', name: 'Evening Match', status: 'running', current_round: 2, current_iteration: 15 },
+      {
+        id: '1',
+        name: 'Evening Match',
+        status: 'running',
+        roster: [],
+        start_blockers: [],
+        current_round: 2,
+        current_iteration: 15,
+        started_at: null,
+      },
     ])
   })
 })
@@ -182,5 +201,98 @@ describe('Google Form hooks', () => {
     const second = renderHook(() => useEntryForm(), { wrapper: createWrapper() })
     await waitFor(() => expect(second.result.current.isSuccess).toBe(true))
     expect(second.result.current.data).toBeNull()
+  })
+})
+
+describe('player and roster hooks', () => {
+  beforeEach(() => {
+    vi.mocked(apiClient.get).mockReset()
+    vi.mocked(apiClient.post).mockReset().mockResolvedValue({ data: {} })
+    vi.mocked(apiClient.patch).mockReset().mockResolvedValue({ data: {} })
+    vi.mocked(apiClient.delete).mockReset().mockResolvedValue({ data: {} })
+  })
+
+  it('usePlayers lists players and surfaces errors', async () => {
+    vi.mocked(apiClient.get).mockResolvedValueOnce({ data: [{ id: 'p1' }] })
+    const { result } = renderHook(() => usePlayers(), { wrapper: createWrapper() })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(apiClient.get).toHaveBeenCalledWith('/players')
+
+    vi.mocked(apiClient.get).mockRejectedValueOnce(new Error('down'))
+    const failing = renderHook(() => usePlayers(), { wrapper: createWrapper() })
+    await waitFor(() => expect(failing.result.current.isError).toBe(true))
+  })
+
+  it('usePlayer fetches one player', async () => {
+    vi.mocked(apiClient.get).mockResolvedValueOnce({ data: { id: 'p1', versions: [] } })
+    const { result } = renderHook(() => usePlayer('p1'), { wrapper: createWrapper() })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(apiClient.get).toHaveBeenCalledWith('/players/p1')
+  })
+
+  it('usePlayer does not call the API without an id', () => {
+    renderHook(() => usePlayer(null), { wrapper: createWrapper() })
+    expect(apiClient.get).not.toHaveBeenCalled()
+  })
+
+  it('useCreatePlayer posts the body', async () => {
+    const { result } = renderHook(() => useCreatePlayer(), { wrapper: createWrapper() })
+    await result.current.mutateAsync({ name: 'Ann', prompt_text: 'hi' })
+    expect(apiClient.post).toHaveBeenCalledWith('/players', { name: 'Ann', prompt_text: 'hi' })
+  })
+
+  it('useUpdatePlayer patches without the id in the body', async () => {
+    const { result } = renderHook(() => useUpdatePlayer(), { wrapper: createWrapper() })
+    await result.current.mutateAsync({ id: 'p1', name: 'Bob' })
+    expect(apiClient.patch).toHaveBeenCalledWith('/players/p1', { name: 'Bob' })
+  })
+
+  it('useAddPromptVersion posts a new version', async () => {
+    const { result } = renderHook(() => useAddPromptVersion(), { wrapper: createWrapper() })
+    await result.current.mutateAsync({ id: 'p1', prompt_text: 'v2' })
+    expect(apiClient.post).toHaveBeenCalledWith('/players/p1/versions', { prompt_text: 'v2' })
+  })
+
+  it('useDeletePlayer deletes the player', async () => {
+    const { result } = renderHook(() => useDeletePlayer(), { wrapper: createWrapper() })
+    await result.current.mutateAsync('p1')
+    expect(apiClient.delete).toHaveBeenCalledWith('/players/p1')
+  })
+
+  it('useCreateGameSession posts the name', async () => {
+    const { result } = renderHook(() => useCreateGameSession(), { wrapper: createWrapper() })
+    await result.current.mutateAsync('Evening')
+    expect(apiClient.post).toHaveBeenCalledWith('/game-sessions', { name: 'Evening' })
+  })
+
+  it('useAddToRoster posts the player id', async () => {
+    const { result } = renderHook(() => useAddToRoster(), { wrapper: createWrapper() })
+    await result.current.mutateAsync({ sessionId: 's1', playerId: 'p1' })
+    expect(apiClient.post).toHaveBeenCalledWith('/game-sessions/s1/players', { player_id: 'p1' })
+  })
+
+  it('useRemoveFromRoster deletes the roster entry', async () => {
+    const { result } = renderHook(() => useRemoveFromRoster(), { wrapper: createWrapper() })
+    await result.current.mutateAsync({ sessionId: 's1', playerId: 'p1' })
+    expect(apiClient.delete).toHaveBeenCalledWith('/game-sessions/s1/players/p1')
+  })
+
+  it('useStartGameSession starts the session', async () => {
+    const { result } = renderHook(() => useStartGameSession(), { wrapper: createWrapper() })
+    await result.current.mutateAsync('s1')
+    expect(apiClient.post).toHaveBeenCalledWith('/game-sessions/s1/start')
+  })
+
+  it('mutations invalidate players, sessions and prompts', async () => {
+    const queryClient = new QueryClient()
+    const spy = vi.spyOn(queryClient, 'invalidateQueries')
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    )
+    const { result } = renderHook(() => useDeletePlayer(), { wrapper })
+    await result.current.mutateAsync('p1')
+    await waitFor(() => expect(spy).toHaveBeenCalledTimes(3))
+    const keys = spy.mock.calls.map((c) => (c[0] as { queryKey: string[] }).queryKey[0])
+    expect(keys).toEqual(['players', 'game-sessions', 'prompts'])
   })
 })
