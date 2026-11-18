@@ -85,14 +85,23 @@ describe('useUpdatePromptStatus', () => {
     vi.mocked(apiClient.patch).mockReset()
   })
 
-  it('PATCHes the prompt status and invalidates the prompts query on success', async () => {
+  it('PATCHes the prompt status and invalidates prompts, players and sessions on success', async () => {
     vi.mocked(apiClient.patch).mockResolvedValueOnce({ data: {} })
-    const { result } = renderHook(() => useUpdatePromptStatus(), { wrapper: createWrapper() })
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    })
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    )
+    const { result } = renderHook(() => useUpdatePromptStatus(), { wrapper })
 
     result.current.mutate({ id: '1', status: 'accepted' })
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     expect(apiClient.patch).toHaveBeenCalledWith('/prompts/1/status', { status: 'accepted' })
+    const keys = invalidate.mock.calls.map(([filters]) => filters?.queryKey)
+    expect(keys).toEqual(expect.arrayContaining([['prompts'], ['players'], ['game-sessions']]))
   })
 })
 
@@ -110,22 +119,11 @@ describe('useGameSessions', () => {
     expect(result.current.data).toHaveLength(1)
   })
 
-  it('falls back to mock sessions when the request fails', async () => {
+  it('surfaces errors instead of falling back to mock sessions', async () => {
     vi.mocked(apiClient.get).mockRejectedValueOnce(new Error('network down'))
     const { result } = renderHook(() => useGameSessions(), { wrapper: createWrapper() })
-    await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    expect(result.current.data).toEqual([
-      {
-        id: '1',
-        name: 'Evening Match',
-        status: 'running',
-        roster: [],
-        start_blockers: [],
-        current_round: 2,
-        current_iteration: 15,
-        started_at: null,
-      },
-    ])
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect(result.current.data).toBeUndefined()
   })
 })
 

@@ -7,10 +7,14 @@ import { router } from './router'
 import * as hooks from './api/hooks'
 
 vi.mock('./components/GoogleFormSourcePanel', () => ({ GoogleFormSourcePanel: () => null }))
+vi.mock('./components/SessionsPanel', () => ({ SessionsPanel: () => null }))
+vi.mock('./components/SessionRoster', () => ({ SessionRoster: () => null }))
+vi.mock('./components/PlayersPanel', () => ({ PlayersPanel: () => null }))
 
 vi.mock('./api/hooks', () => ({
   usePrompts: vi.fn(),
   useUpdatePromptStatus: vi.fn(),
+  useGameSessions: vi.fn(() => ({ data: [] })),
   useEntryForm: vi.fn(() => ({ data: null })),
 }))
 
