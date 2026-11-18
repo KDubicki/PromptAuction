@@ -28,19 +28,6 @@ const fallbackPrompts: PromptSubmission[] = [
   { id: '2', player_id: 'p2', prompt_text: 'Bid aggressively in early rounds.', status: 'accepted' },
 ]
 
-const fallbackSessions: GameSession[] = [
-  {
-    id: '1',
-    name: 'Evening Match',
-    status: 'running',
-    roster: [],
-    start_blockers: [],
-    current_round: 2,
-    current_iteration: 15,
-    started_at: null,
-  },
-]
-
 export function usePrompts(statusFilter?: PromptStatus) {
   return useQuery({
     queryKey: ['prompts', statusFilter],
@@ -65,6 +52,8 @@ export function useUpdatePromptStatus() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['prompts'] })
+      queryClient.invalidateQueries({ queryKey: ['players'] })
+      queryClient.invalidateQueries({ queryKey: ['game-sessions'] })
     },
   })
 }
@@ -133,12 +122,8 @@ export function useGameSessions() {
   return useQuery({
     queryKey: ['game-sessions'],
     queryFn: async () => {
-      try {
-        const { data } = await apiClient.get<GameSession[]>('/game-sessions')
-        return data
-      } catch {
-        return fallbackSessions
-      }
+      const { data } = await apiClient.get<GameSession[]>('/game-sessions')
+      return data
     },
   })
 }

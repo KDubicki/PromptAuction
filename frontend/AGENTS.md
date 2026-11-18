@@ -64,7 +64,10 @@ frontend/src/
     ├── BidLadder.tsx            # Sealed-bid reveal on a value axis
     ├── LiveIndicator.tsx        # Engine heartbeat
     ├── ActionArena.tsx          # The rostrum: lot, hammer price, BidLadder, round progress
-    ├── AdminPanel.tsx           # Prompt review queue (accept/reject)
+    ├── AdminPanel.tsx           # Admin page: sessions, roster, players, review queue, form source
+    ├── SessionsPanel.tsx        # Create/list game sessions, pick the selected one
+    ├── SessionRoster.tsx        # Roster of the selected session: add/remove players, start
+    ├── PlayersPanel.tsx         # Players with prompt versions: create, edit, history, delete
     ├── GoogleFormSourcePanel.tsx # Connect the Google Form players submit through
     ├── BiddingHistoryTable.tsx  # Bidding history
     ├── DarkModeToggle.tsx       # Dark/light mode toggle
@@ -85,10 +88,10 @@ export const apiClient = axios.create({
 
 **`hooks.ts`** — React Query hooks:
 - `usePrompts(statusFilter?)` — list prompts (with mock data fallback)
-- `useUpdatePromptStatus()` — prompt status mutation + cache invalidation
-- `useGameSessions()` — list game sessions (with fallback)
+- `useUpdatePromptStatus()` — prompt status mutation; invalidates `prompts`, `players` and `game-sessions`
+- `useGameSessions()` — list game sessions (no fallback; errors surface in `SessionsPanel`)
 
-**Important:** Hooks have built-in fallback to mock data when the API is unavailable — this allows frontend development without a running backend.
+**Important:** `usePrompts` falls back to mock data when the API is unavailable. `useGameSessions` does not: a fake session would invite Start/Add calls that fail.
 
 ### Types Layer (`src/types.ts`)
 
@@ -175,8 +178,8 @@ Flat config (`eslint.config.js`):
 - Grid layout with MUI Grid v2 (`size` prop)
 
 ### `AdminPanel.tsx`
-- `GoogleFormSourcePanel` (connect / sync / disconnect the entry form) above the review queue
-- Review queue rows: player, prompt, Accept/Reject calling `useUpdatePromptStatus()`
+- Order: `SessionsPanel`, `SessionRoster` for the selected session (newest pending, else newest), `PlayersPanel`, review queue, `GoogleFormSourcePanel`
+- Review queue rows: player, version/source meta line, prompt, optional email-mismatch warning, Accept/Reject calling `useUpdatePromptStatus()`
 
 ### `ActionArena.tsx`
 - Props: `currentItem`, `liveBids`, `revealed`, `round`, `totalRounds`, `iteration`, `totalIterations`
