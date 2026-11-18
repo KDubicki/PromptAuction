@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.db.mongo import mongo_manager
-from app.routers import admin, game_sessions, google_forms, prompts, users
+from app.routers import admin, game_sessions, google_forms, players, prompts, users
 from app.services.config_service import config_service
 from app.services.game_engine import game_engine_service
 from app.services.google_forms import google_forms_service
@@ -58,6 +58,7 @@ app.add_middleware(
 
 app.include_router(users.router, prefix="/api")
 app.include_router(game_sessions.router, prefix="/api")
+app.include_router(players.router, prefix="/api")
 app.include_router(prompts.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
 app.include_router(google_forms.router, prefix="/api")
