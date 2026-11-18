@@ -544,3 +544,23 @@ async def test_imported_count_is_per_form(client: AsyncClient, mock_db: AsyncIOM
     )
     assert second.json()["form"]["imported_count"] == 2
     assert await mock_db.prompts.count_documents({"source": "google_forms"}) == 3
+
+
+async def test_import_skips_blank_and_overlong_nicks(
+    client: AsyncClient, mock_db: AsyncIOMotorDatabase
+) -> None:
+    pages = [
+        {
+            "responses": [
+                _response("n1", "   ", "Blank nick prompt"),
+                _response("n2", "x" * 101, "Long nick prompt"),
+                _response("n3", "  Dana  ", "Fine prompt"),
+            ]
+        }
+    ]
+    _install_client(_google(pages=pages))
+    resp = await client.put("/api/admin/google-form", json={"url": EDIT_URL})
+    form = resp.json()["form"]
+    assert form["imported_count"] == 1
+    assert form["skipped_count"] == 2
+    assert [p["name"] async for p in mock_db.players.find({})] == ["Dana"]

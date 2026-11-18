@@ -3,16 +3,23 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 PromptStatus = Literal["pending", "accepted", "rejected"]
 
 
 class PromptSubmissionCreate(BaseModel):
-    player_id: str = Field(..., description="External player identifier from form")
+    player_id: str = Field(
+        ..., min_length=1, max_length=100, description="External player identifier from form"
+    )
     prompt_text: str = Field(..., min_length=3, max_length=2000)
     email: str | None = Field(default=None, max_length=320)
     form_response_id: str | None = Field(default=None, max_length=200)
+
+    @field_validator("player_id", mode="before")
+    @classmethod
+    def _strip_player_id(cls, value: object) -> object:
+        return value.strip() if isinstance(value, str) else value
 
 
 class PromptSubmissionStatusUpdate(BaseModel):
