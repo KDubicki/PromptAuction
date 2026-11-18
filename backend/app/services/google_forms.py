@@ -10,7 +10,6 @@ from typing import Any
 
 import httpx
 from pydantic import ValidationError
-from pymongo.errors import DuplicateKeyError
 
 from app.core.config import settings
 from app.db.mongo import mongo_manager
@@ -21,7 +20,9 @@ from app.schemas.google_forms import (
     GoogleFormSyncResult,
     PublicEntryForm,
 )
+from app.schemas.players import PromptSource
 from app.schemas.prompts import PromptSubmissionCreate
+from app.services.players import PlayerError, submit_from_outside
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +33,7 @@ SCOPES = [
 ]
 SOURCE_COLLECTION = "google_form_source"
 SOURCE_DOC_ID = "active"
-PROMPT_SOURCE = "google_forms"
+PROMPT_SOURCE: PromptSource = "google_forms"
 
 # Matched against normalised question titles (lowercase, no diacritics).
 # Fields are assigned in this order so "Email gracza" lands on email, not player_id.
@@ -362,7 +363,7 @@ class GoogleFormsService:
                 raise
 
             imported, skipped = await self._import_responses(db, form_id, mapping, responses)
-            imported_total = await db.prompts.count_documents({"source_form_id": form_id})
+            imported_total = await db.prompts.count_documents({"source": PROMPT_SOURCE})
             await db[SOURCE_COLLECTION].update_one(
                 {"_id": SOURCE_DOC_ID},
                 {
@@ -419,17 +420,21 @@ class GoogleFormsService:
                 continue
 
             submitted_at = _parse_timestamp(response.get("lastSubmittedTime") or response.get("createTime"))
-            doc = payload.model_dump() | {
-                "status": "pending",
-                "created_at": submitted_at or now,
-                "updated_at": now,
-                "source": PROMPT_SOURCE,
-                "source_form_id": form_id,
-            }
             try:
-                await db.prompts.insert_one(doc)
-            except DuplicateKeyError:
-                continue  # arrived via the webhook in the meantime
+                result = await submit_from_outside(
+                    db,
+                    name=payload.player_id,
+                    email=payload.email,
+                    prompt_text=payload.prompt_text,
+                    form_response_id=response_id,
+                    source=PROMPT_SOURCE,
+                    submitted_at=submitted_at or now,
+                )
+            except PlayerError:
+                skipped += 1
+                continue
+            if not result.created:
+                continue
             imported += 1
         return imported, skipped
 

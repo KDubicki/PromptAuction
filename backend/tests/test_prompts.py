@@ -23,7 +23,7 @@ async def test_webhook_idempotent_on_form_response_id(client: AsyncClient) -> No
     second = await client.post("/api/prompts/webhook", json=payload)
 
     assert first.status_code == 201
-    assert second.status_code == 201
+    assert second.status_code == 200
     assert first.json()["id"] == second.json()["id"]
 
     resp = await client.get("/api/prompts")

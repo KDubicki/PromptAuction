@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, NamedTuple
 
 from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -28,6 +28,22 @@ class PlayerNotFoundError(PlayerError):
 
 class PlayerConflictError(PlayerError):
     status_code = 409
+
+
+class DuplicateFormResponseError(Exception):
+    """A version with this form_response_id already exists, so the submission was already imported."""
+
+
+class SubmissionResult(NamedTuple):
+    version: dict | None
+    created: bool
+    ignored: bool
+
+
+def _is_form_response_duplicate(exc: DuplicateKeyError) -> bool:
+    details = exc.details or {}
+    key_pattern = details.get("keyPattern") or {}
+    return "form_response_id" in key_pattern or "form_response_id" in str(exc)
 
 
 def name_key(name: str) -> str:
@@ -146,7 +162,9 @@ async def add_version(
             doc["identity_warning"] = identity_warning
         try:
             result = await db.prompts.insert_one(doc)
-        except DuplicateKeyError:
+        except DuplicateKeyError as exc:
+            if _is_form_response_duplicate(exc):
+                raise DuplicateFormResponseError(form_response_id) from exc
             if attempt == VERSION_INSERT_ATTEMPTS - 1:
                 raise PlayerConflictError("Could not assign a version number, try again") from None
             continue
@@ -155,6 +173,102 @@ async def add_version(
             await recompute_current_version(db, player_ref)
         return doc
     raise PlayerConflictError("Could not assign a version number, try again")
+
+
+async def _find_player_for_submission(
+    db: AsyncIOMotorDatabase, name_k: str, email_k: str | None
+) -> tuple[dict | None, bool]:
+    if email_k is not None:
+        player = await db.players.find_one({"email_key": email_k})
+        if player is not None:
+            return player, True
+    player = await db.players.find_one({"name_key": name_k})
+    if player is None:
+        player = await db.players.find_one({"former_name_keys": name_k})
+    return player, False
+
+
+async def _create_pending_player(db: AsyncIOMotorDatabase, name: str, email: str | None) -> dict:
+    ekey = email_key(email)
+    now = datetime.now(UTC)
+    doc: dict[str, Any] = {
+        "name": name,
+        "name_key": name_key(name),
+        "former_name_keys": [],
+        "current_version_id": None,
+        "created_at": now,
+        "updated_at": now,
+    }
+    if email is not None and ekey is not None:
+        doc["email"] = email
+        doc["email_key"] = ekey
+    result = await db.players.insert_one(doc)
+    doc["_id"] = result.inserted_id
+    return doc
+
+
+async def submit_from_outside(
+    db: AsyncIOMotorDatabase,
+    *,
+    name: str,
+    email: str | None,
+    prompt_text: str,
+    form_response_id: str | None,
+    source: PromptSource,
+    submitted_at: datetime | None = None,
+) -> SubmissionResult:
+    name = name.strip()
+    email = _clean_email(email)
+    name_k = name_key(name)
+    email_k = email_key(email)
+
+    if form_response_id:
+        existing = await db.prompts.find_one({"form_response_id": form_response_id})
+        if existing is not None:
+            return SubmissionResult(existing, False, False)
+        if await db.ignored_form_responses.find_one({"_id": form_response_id}) is not None:
+            return SubmissionResult(None, False, True)
+
+    player, matched_by_email = await _find_player_for_submission(db, name_k, email_k)
+    if player is None:
+        try:
+            player = await _create_pending_player(db, name, email)
+        except DuplicateKeyError:
+            # A concurrent submission created the same player first.
+            player, matched_by_email = await _find_player_for_submission(db, name_k, email_k)
+            if player is None:
+                raise PlayerConflictError("Could not create the player, try again") from None
+    identity_warning: str | None = None
+    player_email_k = player.get("email_key")
+    if not matched_by_email and player_email_k is not None and player_email_k != email_k:
+        identity_warning = "email_mismatch"
+
+    if email is not None and email_k is not None and player_email_k is None:
+        try:
+            await db.players.update_one(
+                {"_id": player["_id"], "email_key": {"$exists": False}},
+                {"$set": {"email": email, "email_key": email_k, "updated_at": datetime.now(UTC)}},
+            )
+        except DuplicateKeyError:
+            pass
+
+    try:
+        version = await add_version(
+            db,
+            player,
+            prompt_text,
+            status="pending",
+            source=source,
+            name_at_version=name,
+            email=email,
+            form_response_id=form_response_id,
+            identity_warning=identity_warning,
+            submitted_at=submitted_at,
+        )
+    except DuplicateFormResponseError:
+        existing = await db.prompts.find_one({"form_response_id": form_response_id})
+        return SubmissionResult(existing, False, False)
+    return SubmissionResult(version, True, False)
 
 
 async def recompute_current_version(db: AsyncIOMotorDatabase, player_ref: str) -> str | None:
