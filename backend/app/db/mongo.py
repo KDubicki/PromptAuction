@@ -32,7 +32,27 @@ class MongoManager:
             IndexModel([("form_response_id", ASCENDING)], unique=True, sparse=True),
         ])
 
+        await self.db.prompts.create_indexes([
+            IndexModel([("player_ref", ASCENDING)]),
+            IndexModel(
+                [("player_ref", ASCENDING), ("version", ASCENDING)],
+                unique=True,
+                partialFilterExpression={"player_ref": {"$type": "string"}},
+            ),
+        ])
+
+        await self.db.players.create_indexes([
+            IndexModel([("name_key", ASCENDING)], unique=True),
+            IndexModel(
+                [("email_key", ASCENDING)],
+                unique=True,
+                partialFilterExpression={"email_key": {"$type": "string"}},
+            ),
+            IndexModel([("former_name_keys", ASCENDING)]),
+        ])
+
         await self.db.game_sessions.create_indexes([
+            IndexModel([("roster.player_ref", ASCENDING)]),
             IndexModel([("status", ASCENDING)]),
             IndexModel([("created_at", ASCENDING)]),
         ])

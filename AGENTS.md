@@ -120,6 +120,12 @@ Frontend dev server: http://localhost:5173
 | GET     | `/api/game-sessions`            | List game sessions                |
 | GET     | `/api/game-sessions/{id}`       | Get game session                  |
 | PATCH   | `/api/game-sessions/{id}`       | Update game session               |
+| POST    | `/api/players`                  | Create player + accepted v1       |
+| GET     | `/api/players`                  | List players (by name)            |
+| GET     | `/api/players/{id}`             | Player with all versions          |
+| PATCH   | `/api/players/{id}`             | Rename / change email             |
+| DELETE  | `/api/players/{id}`             | Delete player and versions        |
+| POST    | `/api/players/{id}/versions`    | Add admin-written version         |
 | POST    | `/api/prompts/webhook`          | Webhook – submit prompt           |
 | GET     | `/api/prompts`                  | List prompts (filter by status)   |
 | PATCH   | `/api/prompts/{id}/status`      | Update prompt status              |
@@ -133,7 +139,9 @@ Frontend dev server: http://localhost:5173
 
 | Collection      | Description                                       |
 |-----------------|---------------------------------------------------|
-| `users`         | Player data (username, email)                     |
+| `users`         | Legacy user data; not used by the game (players are in `players`) |
+| `players`       | Players (name, email, former names, current version) |
+| `ignored_form_responses` | Form responses of deleted players, skipped on sync |
 | `game_sessions` | Game sessions (status, round, iteration, prompts) |
 | `prompts`       | Submitted prompts (player_id, text, status)       |
 | `google_form_source` | The connected Google Form and its sync state |
