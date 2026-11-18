@@ -363,7 +363,7 @@ class GoogleFormsService:
                 raise
 
             imported, skipped = await self._import_responses(db, form_id, mapping, responses)
-            imported_total = await db.prompts.count_documents({"source": PROMPT_SOURCE})
+            imported_total = await db.prompts.count_documents({"source_form_id": form_id})
             await db[SOURCE_COLLECTION].update_one(
                 {"_id": SOURCE_DOC_ID},
                 {
@@ -429,6 +429,7 @@ class GoogleFormsService:
                     form_response_id=response_id,
                     source=PROMPT_SOURCE,
                     submitted_at=submitted_at or now,
+                    source_form_id=form_id,
                 )
             except PlayerError:
                 skipped += 1

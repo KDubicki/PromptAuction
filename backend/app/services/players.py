@@ -139,6 +139,7 @@ async def add_version(
     form_response_id: str | None = None,
     identity_warning: str | None = None,
     submitted_at: datetime | None = None,
+    source_form_id: str | None = None,
 ) -> dict:
     player_ref = str(player["_id"])
     now = submitted_at or datetime.now(UTC)
@@ -158,6 +159,8 @@ async def add_version(
             doc["email"] = email
         if form_response_id is not None:
             doc["form_response_id"] = form_response_id
+        if source_form_id is not None:
+            doc["source_form_id"] = source_form_id
         if identity_warning is not None:
             doc["identity_warning"] = identity_warning
         try:
@@ -216,6 +219,7 @@ async def submit_from_outside(
     form_response_id: str | None,
     source: PromptSource,
     submitted_at: datetime | None = None,
+    source_form_id: str | None = None,
 ) -> SubmissionResult:
     name = name.strip()
     email = _clean_email(email)
@@ -264,6 +268,7 @@ async def submit_from_outside(
             form_response_id=form_response_id,
             identity_warning=identity_warning,
             submitted_at=submitted_at,
+            source_form_id=source_form_id,
         )
     except DuplicateFormResponseError:
         existing = await db.prompts.find_one({"form_response_id": form_response_id})

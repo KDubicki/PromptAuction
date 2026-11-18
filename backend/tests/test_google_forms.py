@@ -527,3 +527,20 @@ async def test_start_and_stop(monkeypatch: pytest.MonkeyPatch) -> None:
     await google_forms_service.stop()
     assert google_forms_service._task is None
     await google_forms_service.stop()  # no-op when not running
+
+
+async def test_imported_count_is_per_form(client: AsyncClient, mock_db: AsyncIOMotorDatabase) -> None:
+    _install_client(_google(pages=[{"responses": [_response("a1", "Alice", "From form A")]}]))
+    first = await client.put("/api/admin/google-form", json={"url": EDIT_URL})
+    assert first.json()["form"]["imported_count"] == 1
+    assert (await client.delete("/api/admin/google-form")).status_code == 204
+
+    other_id = "2ZyXwVuTsRqPoNmLkJiHgFeDcBa9876543210"
+    other_form = {**FORM, "formId": other_id}
+    pages = [{"responses": [_response("b1", "Bob", "From form B"), _response("b2", "Cara", "Also B")]}]
+    _install_client(_google(form=other_form, pages=pages))
+    second = await client.put(
+        "/api/admin/google-form", json={"url": f"https://docs.google.com/forms/d/{other_id}/edit"}
+    )
+    assert second.json()["form"]["imported_count"] == 2
+    assert await mock_db.prompts.count_documents({"source": "google_forms"}) == 3
