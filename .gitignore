@@ -5,6 +5,8 @@ __pycache__/
 .venv/
 venv/
 .env
+backend/secrets/
+*service-account*.json
 
 # Node
 node_modules/
@@ -33,3 +35,6 @@ DESIGN_PLAN.md
 .coverage
 .pytest_cache/
 coverage/
+# graphify output
+graphify-out/
+.playwright-mcp/
