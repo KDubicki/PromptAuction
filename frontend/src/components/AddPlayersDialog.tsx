@@ -10,12 +10,18 @@ interface Props {
   onClose: () => void
 }
 
-function AddPlayersForm({ session, onClose }: { session: GameSession; onClose: () => void }) {
+interface FormProps {
+  session: GameSession
+  saving: boolean
+  setSaving: (saving: boolean) => void
+  onClose: () => void
+}
+
+function AddPlayersForm({ session, saving, setSaving, onClose }: FormProps) {
   const { data: players = [] } = usePlayers()
   const addToRoster = useAddToRoster()
   const [selected, setSelected] = useState<Player[]>([])
   const [error, setError] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
 
   const inRoster = new Set(session.roster.map((entry) => entry.player_ref))
   const options = players.filter((player) => !inRoster.has(player.id))
@@ -26,6 +32,7 @@ function AddPlayersForm({ session, onClose }: { session: GameSession; onClose: (
     try {
       for (const player of selected) {
         await addToRoster.mutateAsync({ sessionId: session.id, playerId: player.id })
+        setSelected((current) => current.filter((item) => item.id !== player.id))
       }
       onClose()
     } catch (e) {
@@ -53,7 +60,7 @@ function AddPlayersForm({ session, onClose }: { session: GameSession; onClose: (
         />
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
+        <Button disabled={saving} onClick={onClose}>Cancel</Button>
         <Button variant="contained" disabled={selected.length === 0 || saving} onClick={submit}>
           Add
         </Button>
@@ -63,9 +70,10 @@ function AddPlayersForm({ session, onClose }: { session: GameSession; onClose: (
 }
 
 export function AddPlayersDialog({ session, open, onClose }: Props) {
+  const [saving, setSaving] = useState(false)
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-      <AddPlayersForm session={session} onClose={onClose} />
+    <Dialog open={open} onClose={saving ? undefined : onClose} fullWidth maxWidth="sm">
+      <AddPlayersForm session={session} saving={saving} setSaving={setSaving} onClose={onClose} />
     </Dialog>
   )
 }

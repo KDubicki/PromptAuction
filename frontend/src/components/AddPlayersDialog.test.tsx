@@ -94,4 +94,40 @@ describe('AddPlayersDialog', () => {
     render(<AddPlayersDialog session={session} open onClose={onClose} />)
     expect(screen.getByRole('combobox')).toBeInTheDocument()
   })
+
+  it('retries only the players not yet added after a partial failure', async () => {
+    add.mockResolvedValueOnce({}).mockRejectedValueOnce(new Error('409'))
+    vi.mocked(hooks.usePlayers).mockReturnValue({
+      data: [mkPlayer('p2', 'Bram'), mkPlayer('p3', 'Cato'), mkPlayer('p4', 'Dara')],
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any)
+    render(<AddPlayersDialog session={session} open onClose={onClose} />)
+    for (const name of ['Bram', 'Cato', 'Dara']) {
+      const list = await open()
+      await userEvent.click(within(list).getByText(name))
+    }
+    await userEvent.click(screen.getByRole('button', { name: 'Add' }))
+    expect(await screen.findByText('msg:409')).toBeInTheDocument()
+    expect(add).toHaveBeenCalledTimes(2)
+
+    add.mockClear()
+    add.mockResolvedValue({})
+    await userEvent.click(screen.getByRole('button', { name: 'Add' }))
+    await waitFor(() => expect(onClose).toHaveBeenCalled())
+    expect(add).toHaveBeenCalledTimes(2)
+    expect(add).toHaveBeenNthCalledWith(1, { sessionId: 's1', playerId: 'p3' })
+    expect(add).toHaveBeenNthCalledWith(2, { sessionId: 's1', playerId: 'p4' })
+  })
+
+  it('blocks Cancel while saving', async () => {
+    let release: () => void = () => {}
+    add.mockReturnValue(new Promise<void>((resolve) => { release = resolve }))
+    render(<AddPlayersDialog session={session} open onClose={onClose} />)
+    const list = await open()
+    await userEvent.click(within(list).getByText('Bram'))
+    await userEvent.click(screen.getByRole('button', { name: 'Add' }))
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled()
+    release()
+    await waitFor(() => expect(onClose).toHaveBeenCalled())
+  })
 })
