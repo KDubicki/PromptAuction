@@ -12,6 +12,7 @@ from app.services.config_service import config_service
 from app.services.game_engine import game_engine_service
 from app.services.google_forms import google_forms_service
 from app.services.llm.manager import llm_manager
+from app.services.migrations import migrate_prompts_to_players
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +20,8 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     await mongo_manager.connect()
+    if mongo_manager.db is not None:
+        await migrate_prompts_to_players(mongo_manager.db)
 
     # Load game config from DB into cache (or use defaults if none stored yet)
     await config_service.get()

@@ -76,3 +76,25 @@ async def test_cors_allows_the_configured_frontend_origin() -> None:
         )
     assert resp.status_code == 200
     assert resp.headers["access-control-allow-origin"] == "http://localhost:5173"
+
+
+async def test_lifespan_runs_migration_when_db_connected(
+    monkeypatch: pytest.MonkeyPatch, mock_db: object
+) -> None:
+    migrate = AsyncMock(return_value=0)
+    monkeypatch.setattr("app.main.migrate_prompts_to_players", migrate)
+
+    async with lifespan(app):
+        pass
+
+    migrate.assert_awaited_once_with(mongo_manager.db)
+
+
+async def test_lifespan_skips_migration_without_db(monkeypatch: pytest.MonkeyPatch) -> None:
+    migrate = AsyncMock(return_value=0)
+    monkeypatch.setattr("app.main.migrate_prompts_to_players", migrate)
+
+    async with lifespan(app):
+        pass
+
+    migrate.assert_not_awaited()
