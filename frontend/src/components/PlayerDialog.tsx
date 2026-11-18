@@ -34,10 +34,15 @@ function PlayerForm({ player, onClose }: { player: Player | null; onClose: () =>
           prompt_text: prompt.trim(),
         })
       } else {
-        const profileChanged = name.trim() !== player.name || email.trim() !== (player.email ?? '')
+        const nameChanged = name.trim() !== player.name
+        const emailChanged = email.trim() !== (player.email ?? '')
         const promptChanged = prompt.trim() !== (player.current_version?.prompt_text ?? '').trim()
-        if (profileChanged) {
-          await update.mutateAsync({ id: player.id, name: name.trim(), email: email.trim() || undefined })
+        if (nameChanged || emailChanged) {
+          await update.mutateAsync({
+            id: player.id,
+            ...(nameChanged && { name: name.trim() }),
+            ...(emailChanged && { email: email.trim() }),
+          })
         }
         if (promptChanged && prompt.trim()) {
           await addVersion.mutateAsync({ id: player.id, prompt_text: prompt.trim() })
