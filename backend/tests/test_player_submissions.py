@@ -247,3 +247,11 @@ async def test_unresolvable_player_creation_conflict_is_reported(mock_db: AsyncI
             )
     finally:
         mp.undo()
+
+
+async def test_webhook_rejects_bad_nick(client: AsyncClient, mock_db: AsyncIOMotorDatabase) -> None:
+    for nick in ("  ", "", "x" * 101):
+        resp = await client.post("/api/prompts/webhook", json={"player_id": nick, "prompt_text": "Shadow."})
+        assert resp.status_code == 422
+    assert await mock_db.players.count_documents({}) == 0
+    assert await mock_db.prompts.count_documents({}) == 0
