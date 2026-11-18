@@ -7,6 +7,8 @@ import type {
   GameSession,
   GoogleFormStatus,
   GoogleFormSyncResult,
+  Player,
+  PlayerDetail,
   PromptStatus,
   PromptSubmission,
 } from '../types'
@@ -27,7 +29,16 @@ const fallbackPrompts: PromptSubmission[] = [
 ]
 
 const fallbackSessions: GameSession[] = [
-  { id: '1', name: 'Evening Match', status: 'running', current_round: 2, current_iteration: 15 },
+  {
+    id: '1',
+    name: 'Evening Match',
+    status: 'running',
+    roster: [],
+    start_blockers: [],
+    current_round: 2,
+    current_iteration: 15,
+    started_at: null,
+  },
 ]
 
 export function usePrompts(statusFilter?: PromptStatus) {
@@ -129,5 +140,92 @@ export function useGameSessions() {
         return fallbackSessions
       }
     },
+  })
+}
+
+function useRosterMutation<TVariables, TResult>(request: (variables: TVariables) => Promise<TResult>) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: request,
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['players'] })
+      queryClient.invalidateQueries({ queryKey: ['game-sessions'] })
+      queryClient.invalidateQueries({ queryKey: ['prompts'] })
+    },
+  })
+}
+
+export function usePlayers() {
+  return useQuery({
+    queryKey: ['players'],
+    queryFn: async () => {
+      const { data } = await apiClient.get<Player[]>('/players')
+      return data
+    },
+  })
+}
+
+export function usePlayer(id: string | null) {
+  return useQuery({
+    queryKey: ['players', id],
+    enabled: id !== null,
+    queryFn: async () => {
+      const { data } = await apiClient.get<PlayerDetail>(`/players/${id}`)
+      return data
+    },
+  })
+}
+
+export function useCreatePlayer() {
+  return useRosterMutation(async (body: { name: string; email?: string; prompt_text: string }) => {
+    const { data } = await apiClient.post<Player>('/players', body)
+    return data
+  })
+}
+
+export function useUpdatePlayer() {
+  return useRosterMutation(async ({ id, ...body }: { id: string; name?: string; email?: string }) => {
+    const { data } = await apiClient.patch<Player>(`/players/${id}`, body)
+    return data
+  })
+}
+
+export function useAddPromptVersion() {
+  return useRosterMutation(async ({ id, prompt_text }: { id: string; prompt_text: string }) => {
+    const { data } = await apiClient.post<PlayerDetail>(`/players/${id}/versions`, { prompt_text })
+    return data
+  })
+}
+
+export function useDeletePlayer() {
+  return useRosterMutation(async (id: string) => {
+    await apiClient.delete(`/players/${id}`)
+  })
+}
+
+export function useCreateGameSession() {
+  return useRosterMutation(async (name: string) => {
+    const { data } = await apiClient.post<GameSession>('/game-sessions', { name })
+    return data
+  })
+}
+
+export function useAddToRoster() {
+  return useRosterMutation(async ({ sessionId, playerId }: { sessionId: string; playerId: string }) => {
+    const { data } = await apiClient.post<GameSession>(`/game-sessions/${sessionId}/players`, { player_id: playerId })
+    return data
+  })
+}
+
+export function useRemoveFromRoster() {
+  return useRosterMutation(async ({ sessionId, playerId }: { sessionId: string; playerId: string }) => {
+    await apiClient.delete(`/game-sessions/${sessionId}/players/${playerId}`)
+  })
+}
+
+export function useStartGameSession() {
+  return useRosterMutation(async (sessionId: string) => {
+    const { data } = await apiClient.post<GameSession>(`/game-sessions/${sessionId}/start`)
+    return data
   })
 }
