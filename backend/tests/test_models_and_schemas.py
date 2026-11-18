@@ -9,7 +9,6 @@ from app.schemas.common import object_id_to_str
 def test_game_session_model_defaults() -> None:
     session = GameSessionModel(name="Test")
     assert session.status == "pending"
-    assert session.accepted_prompt_ids == []
     assert session.current_round == 0
     assert session.current_iteration == 0
 

@@ -35,10 +35,15 @@ async def test_get_game_session_not_found(client: AsyncClient) -> None:
 async def test_update_game_session(client: AsyncClient) -> None:
     created = await client.post("/api/game-sessions", json={"name": "Match"})
     session_id = created.json()["id"]
+    for name in ("Aurelia", "Brutus"):
+        player = await client.post("/api/players", json={"name": name, "prompt_text": "Bid smart."})
+        await client.post(f"/api/game-sessions/{session_id}/players", json={"player_id": player.json()["id"]})
+    started = await client.post(f"/api/game-sessions/{session_id}/start")
+    assert started.json()["status"] == "running"
 
-    resp = await client.patch(f"/api/game-sessions/{session_id}", json={"status": "running"})
+    resp = await client.patch(f"/api/game-sessions/{session_id}", json={"status": "paused"})
     assert resp.status_code == 200
-    assert resp.json()["status"] == "running"
+    assert resp.json()["status"] == "paused"
 
 
 async def test_update_game_session_no_fields_is_noop(client: AsyncClient) -> None:
@@ -51,7 +56,7 @@ async def test_update_game_session_no_fields_is_noop(client: AsyncClient) -> Non
 
 
 async def test_update_game_session_not_found(client: AsyncClient) -> None:
-    resp = await client.patch("/api/game-sessions/64b64b64b64b64b64b64b64b", json={"status": "running"})
+    resp = await client.patch("/api/game-sessions/64b64b64b64b64b64b64b64b", json={"status": "paused"})
     assert resp.status_code == 404
 
 

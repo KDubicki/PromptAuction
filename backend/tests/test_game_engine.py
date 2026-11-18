@@ -19,7 +19,6 @@ async def _make_session(mock_db, **overrides) -> dict:
     doc = {
         "name": "Test Session",
         "status": "running",
-        "accepted_prompt_ids": [],
         "current_round": 0,
         "current_iteration": 0,
     }

@@ -119,7 +119,11 @@ Frontend dev server: http://localhost:5173
 | POST    | `/api/game-sessions`            | Create game session               |
 | GET     | `/api/game-sessions`            | List game sessions                |
 | GET     | `/api/game-sessions/{id}`       | Get game session                  |
-| PATCH   | `/api/game-sessions/{id}`       | Update game session               |
+| PATCH   | `/api/game-sessions/{id}`       | Rename / change status (running, paused, completed) |
+| DELETE  | `/api/game-sessions/{id}`       | Delete session (409 while running) |
+| POST    | `/api/game-sessions/{id}/players` | Add player to roster (pending only) |
+| DELETE  | `/api/game-sessions/{id}/players/{player_id}` | Remove player from roster (pending only) |
+| POST    | `/api/game-sessions/{id}/start` | Start session, pinning each player's current prompt version |
 | POST    | `/api/players`                  | Create player + accepted v1       |
 | GET     | `/api/players`                  | List players (by name)            |
 | GET     | `/api/players/{id}`             | Player with all versions          |

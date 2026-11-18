@@ -26,12 +26,27 @@ class GameSessionUpdate(BaseModel):
     status: GameStatus | None = None
 
 
+class RosterAdd(BaseModel):
+    player_id: str
+
+
+class RosterEntryOut(BaseModel):
+    player_ref: str
+    name: str
+    current_version: int | None = None
+    version_id: str | None = None
+    version: int | None = None
+    prompt_text: str | None = None
+
+
 class GameSessionOut(BaseModel):
     id: str
     name: str
     status: GameStatus
-    accepted_prompt_ids: list[str] = Field(default_factory=list)
+    roster: list[RosterEntryOut] = Field(default_factory=list)
+    start_blockers: list[str] = Field(default_factory=list)
     current_round: int = 0
     current_iteration: int = 0
+    started_at: datetime | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
