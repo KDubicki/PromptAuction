@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from httpx import AsyncClient
+from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.config import settings
 
@@ -94,3 +95,15 @@ async def test_prompts_endpoints_503_when_db_not_connected(client_no_db: AsyncCl
     assert (
         await client_no_db.patch(f"/api/prompts/{oid}/status", json={"status": "accepted"})
     ).status_code == 503
+
+
+async def test_webhook_accepts_many_submissions_without_form_response_id(
+    client: AsyncClient, mock_db: AsyncIOMotorDatabase
+) -> None:
+    # Mirrors the production index: unique + sparse only skips documents where the field is absent.
+    await mock_db.prompts.create_index("form_response_id", unique=True, sparse=True)
+    for player in ("p1", "p2"):
+        payload = {"player_id": player, "prompt_text": "Bid low."}
+        resp = await client.post("/api/prompts/webhook", json=payload)
+        assert resp.status_code == 201
+    assert await mock_db.prompts.count_documents({"form_response_id": {"$exists": True}}) == 0

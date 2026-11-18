@@ -52,7 +52,8 @@ async def receive_prompt_webhook(
             return _prompt_doc_to_out(existing)
 
     now = datetime.now(UTC)
-    doc = payload.model_dump() | {"status": "pending", "created_at": now, "updated_at": now}
+    # A null form_response_id would still be indexed by the unique sparse index, so leave it out.
+    doc = payload.model_dump(exclude_none=True) | {"status": "pending", "created_at": now, "updated_at": now}
     result = await db.prompts.insert_one(doc)
     doc["_id"] = result.inserted_id
     return _prompt_doc_to_out(doc)
