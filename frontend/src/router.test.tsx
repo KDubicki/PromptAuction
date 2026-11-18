@@ -6,9 +6,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { router } from './router'
 import * as hooks from './api/hooks'
 
+vi.mock('./components/GoogleFormSourcePanel', () => ({ GoogleFormSourcePanel: () => null }))
+
 vi.mock('./api/hooks', () => ({
   usePrompts: vi.fn(),
   useUpdatePromptStatus: vi.fn(),
+  useEntryForm: vi.fn(() => ({ data: null })),
 }))
 
 function renderRouter() {

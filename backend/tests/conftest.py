@@ -10,12 +10,14 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from app.db.mongo import mongo_manager
 from app.main import app
 from app.services.config_service import config_service
+from app.services.google_forms import google_forms_service
 from app.services.llm.manager import llm_manager
 
 
 def _reset_all() -> None:
     config_service._cache = None
     config_service._cache_at = 0.0
+    google_forms_service._client = None
     llm_manager._primary = None
     llm_manager._fallback = None
     mongo_manager.client = None

@@ -24,6 +24,7 @@ PromptAuction/
   - `/api/users` CRUD
   - `/api/game-sessions` CRUD
   - `/api/prompts/webhook` for prompt submissions (Google Forms-style webhook)
+  - `/api/admin/google-form` connect a Google Form; the backend then pulls responses itself (see [docs/google-forms-setup.md](docs/google-forms-setup.md))
   - `/api/prompts` list + status updates (`accepted`/`rejected`/`pending`)
 - Service layer:
   - `app/services/game_engine.py` asynchronous game loop placeholder
@@ -44,7 +45,13 @@ MONGODB_DB_NAME=promptauction
 GAME_ROUNDS=50
 GAME_ITERATIONS_PER_ROUND=45
 GAME_ENGINE_SLEEP_SECONDS=1
+CORS_ORIGINS=http://localhost:5173
+GOOGLE_SERVICE_ACCOUNT_FILE=
+GOOGLE_SERVICE_ACCOUNT_JSON=
+GOOGLE_FORMS_POLL_SECONDS=30
 ```
+
+> Pulling player prompts from Google Forms needs a Google Cloud service account — step-by-step setup in [docs/google-forms-setup.md](docs/google-forms-setup.md).
 
 > `GAME_ROUNDS` and `GAME_ITERATIONS_PER_ROUND` are strictly environment-driven and loaded via `BaseSettings` in `app/core/config.py`.
 

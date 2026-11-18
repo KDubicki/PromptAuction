@@ -96,6 +96,10 @@ Frontend dev server: http://localhost:5173
 | `GAME_ROUNDS`                 | 50                         | Number of rounds per game session       |
 | `GAME_ITERATIONS_PER_ROUND`   | 45                         | Number of iterations per round          |
 | `GAME_ENGINE_SLEEP_SECONDS`   | 1                          | Game engine loop interval (seconds)     |
+| `CORS_ORIGINS`                | http://localhost:5173      | Comma-separated browser origins allowed to call the API |
+| `GOOGLE_SERVICE_ACCOUNT_FILE` | (empty)                    | Path to the Google service account key (JSON) |
+| `GOOGLE_SERVICE_ACCOUNT_JSON` | (empty)                    | Same key inline, one line (alternative to the file) |
+| `GOOGLE_FORMS_POLL_SECONDS`   | 30                         | How often the connected Google Form is pulled |
 
 ### Frontend (`frontend/.env`)
 
@@ -119,6 +123,11 @@ Frontend dev server: http://localhost:5173
 | POST    | `/api/prompts/webhook`          | Webhook – submit prompt           |
 | GET     | `/api/prompts`                  | List prompts (filter by status)   |
 | PATCH   | `/api/prompts/{id}/status`      | Update prompt status              |
+| GET     | `/api/admin/google-form`        | Google Form connection status     |
+| PUT     | `/api/admin/google-form`        | Connect a form by its editor link |
+| POST    | `/api/admin/google-form/sync`   | Pull new form responses now       |
+| DELETE  | `/api/admin/google-form`        | Disconnect the form               |
+| GET     | `/api/entry-form`               | Public link of the connected form |
 
 ## MongoDB Collections
 
@@ -127,6 +136,7 @@ Frontend dev server: http://localhost:5173
 | `users`         | Player data (username, email)                     |
 | `game_sessions` | Game sessions (status, round, iteration, prompts) |
 | `prompts`       | Submitted prompts (player_id, text, status)       |
+| `google_form_source` | The connected Google Form and its sync state |
 | `player_bids`   | Bid history (player_id, item, amount, won)        |
 
 ## Code Structure — Key Files
@@ -144,6 +154,7 @@ Frontend dev server: http://localhost:5173
 | `backend/app/schemas/`                | Pydantic models (request/response)             |
 | `backend/app/services/game_engine.py` | Async game engine (asyncio task)               |
 | `backend/app/services/llm_service.py` | LLM integration placeholder                   |
+| `backend/app/services/google_forms.py`| Pulls prompts from the connected Google Form  |
 
 ### Frontend
 
@@ -156,6 +167,7 @@ Frontend dev server: http://localhost:5173
 | `frontend/src/components/AdminPanel.tsx`  | Admin panel (accept/reject prompts)        |
 | `frontend/src/components/ActionArena.tsx` | Auction arena (live bids)                  |
 | `frontend/src/components/StatusHeader.tsx`| Round/iteration header                     |
+| `frontend/src/components/GoogleFormSourcePanel.tsx`| Connect the Google Form (admin)  |
 
 ## Coding Conventions
 

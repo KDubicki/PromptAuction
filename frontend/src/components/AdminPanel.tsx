@@ -1,5 +1,6 @@
 import { Box, Button, Card, Stack, Typography } from '@mui/material'
 
+import { GoogleFormSourcePanel } from './GoogleFormSourcePanel'
 import { Panel } from './Panel'
 import { usePrompts, useUpdatePromptStatus } from '../api/hooks'
 import type { PromptSubmission } from '../types'
@@ -71,6 +72,8 @@ export function AdminPanel() {
           Review pending prompts before the round opens. Accepted prompts become bidding agents.
         </Typography>
       </Stack>
+
+      <GoogleFormSourcePanel />
 
       <Panel
         title="Review queue"
