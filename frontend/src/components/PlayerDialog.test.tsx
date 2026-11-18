@@ -59,9 +59,9 @@ describe('PlayerDialog', () => {
     render(<PlayerDialog open player={null} onClose={onClose} />)
     await userEvent.type(screen.getByLabelText('Nick'), 'g')
     await userEvent.type(screen.getByLabelText('Email (optional)'), 'g@x.io')
-    await userEvent.type(screen.getByLabelText('Prompt'), 'p')
+    await userEvent.type(screen.getByLabelText('Prompt'), 'prompt')
     await userEvent.click(screen.getByRole('button', { name: 'Add player' }))
-    expect(create).toHaveBeenCalledWith({ name: 'g', email: 'g@x.io', prompt_text: 'p' })
+    expect(create).toHaveBeenCalledWith({ name: 'g', email: 'g@x.io', prompt_text: 'prompt' })
   })
 
   it('pre-fills and adds a version when only the prompt changed', async () => {
@@ -113,10 +113,66 @@ describe('PlayerDialog', () => {
     create.mockRejectedValue(new Error('nick taken'))
     render(<PlayerDialog open player={null} onClose={onClose} />)
     await userEvent.type(screen.getByLabelText('Nick'), 'g')
-    await userEvent.type(screen.getByLabelText('Prompt'), 'p')
+    await userEvent.type(screen.getByLabelText('Prompt'), 'prompt')
     await userEvent.click(screen.getByRole('button', { name: 'Add player' }))
     expect(await screen.findByText('msg:nick taken')).toBeInTheDocument()
     expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('retries only the prompt after a partial failure', async () => {
+    addVersion.mockRejectedValueOnce(new Error('too long')).mockResolvedValue({})
+    render(<PlayerDialog open player={player} onClose={onClose} />)
+    await userEvent.type(screen.getByLabelText('Nick'), '2')
+    await userEvent.clear(screen.getByLabelText('Prompt'))
+    await userEvent.type(screen.getByLabelText('Prompt'), 'new prompt')
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+    expect(
+      await screen.findByText('Saved the nick and email, but the new prompt version failed: msg:too long'),
+    ).toBeInTheDocument()
+    expect(onClose).not.toHaveBeenCalled()
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(onClose).toHaveBeenCalled())
+    expect(update).toHaveBeenCalledTimes(1)
+    expect(addVersion).toHaveBeenCalledTimes(2)
+  })
+
+  it('disables Save for an emptied or too-short prompt in edit mode', async () => {
+    render(<PlayerDialog open player={player} onClose={onClose} />)
+    const save = screen.getByRole('button', { name: 'Save' })
+    await userEvent.clear(screen.getByLabelText('Prompt'))
+    expect(save).toBeDisabled()
+    await userEvent.type(screen.getByLabelText('Prompt'), 'ab')
+    expect(save).toBeDisabled()
+    expect(screen.getByText('Prompt must be 3–2000 characters.')).toBeInTheDocument()
+    await userEvent.type(screen.getByLabelText('Prompt'), 'c')
+    expect(save).toBeEnabled()
+  })
+
+  it('disables Add player for a too-short prompt and over-long fields', async () => {
+    render(<PlayerDialog open player={null} onClose={onClose} />)
+    const submit = screen.getByRole('button', { name: 'Add player' })
+    await userEvent.type(screen.getByLabelText('Nick'), 'g')
+    await userEvent.type(screen.getByLabelText('Prompt'), 'ab')
+    expect(submit).toBeDisabled()
+    await userEvent.type(screen.getByLabelText('Prompt'), 'c')
+    expect(submit).toBeEnabled()
+    await userEvent.type(screen.getByLabelText('Nick'), 'x'.repeat(100))
+    expect(submit).toBeDisabled()
+    expect(screen.getByText('Nick must be 1–100 characters.')).toBeInTheDocument()
+    await userEvent.clear(screen.getByLabelText('Nick'))
+    await userEvent.type(screen.getByLabelText('Nick'), 'g')
+    await userEvent.click(screen.getByLabelText('Email (optional)'))
+    await userEvent.paste('e'.repeat(321))
+    expect(submit).toBeDisabled()
+    expect(screen.getByText('Email must be at most 320 characters.')).toBeInTheDocument()
+  })
+
+  it('rejects a prompt over 2000 characters', async () => {
+    render(<PlayerDialog open player={null} onClose={onClose} />)
+    await userEvent.type(screen.getByLabelText('Nick'), 'g')
+    await userEvent.click(screen.getByLabelText('Prompt'))
+    await userEvent.paste('p'.repeat(2001))
+    expect(screen.getByRole('button', { name: 'Add player' })).toBeDisabled()
   })
 
   it('cancels', async () => {
