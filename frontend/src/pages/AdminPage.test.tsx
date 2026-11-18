@@ -4,6 +4,8 @@ import { describe, expect, it, vi } from 'vitest'
 import { AdminPage } from './AdminPage'
 import * as hooks from '../api/hooks'
 
+vi.mock('../components/GoogleFormSourcePanel', () => ({ GoogleFormSourcePanel: () => null }))
+
 vi.mock('../api/hooks', () => ({
   usePrompts: vi.fn(),
   useUpdatePromptStatus: vi.fn(),

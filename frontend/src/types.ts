@@ -22,6 +22,37 @@ export interface GameSession {
   current_iteration: number
 }
 
+export interface GoogleFormSource {
+  form_id: string
+  title: string
+  edit_url: string
+  responder_url: string | null
+  connected_at: string | null
+  last_synced_at: string | null
+  last_error: string | null
+  imported_count: number
+  skipped_count: number
+  mapping: { player_id: string | null; prompt_text: string | null; email: string | null }
+}
+
+export interface GoogleFormStatus {
+  credentials_configured: boolean
+  credentials_error: string | null
+  service_account_email: string | null
+  poll_interval_seconds: number
+  form: GoogleFormSource | null
+}
+
+export interface GoogleFormSyncResult {
+  imported: number
+  skipped: number
+}
+
+export interface EntryForm {
+  title: string
+  responder_url: string
+}
+
 export interface LeaderboardEntry {
   playerId: string
   winRate: number

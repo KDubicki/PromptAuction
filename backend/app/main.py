@@ -3,12 +3,14 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.db.mongo import mongo_manager
-from app.routers import admin, game_sessions, prompts, users
+from app.routers import admin, game_sessions, google_forms, prompts, users
 from app.services.config_service import config_service
 from app.services.game_engine import game_engine_service
+from app.services.google_forms import google_forms_service
 from app.services.llm.manager import llm_manager
 
 logger = logging.getLogger(__name__)
@@ -36,19 +38,29 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         logger.warning("No LLM_API_KEY set — LLM provider not configured")
 
     game_engine_service.start()
+    google_forms_service.start()
     try:
         yield
     finally:
+        await google_forms_service.stop()
         await game_engine_service.stop()
         await mongo_manager.disconnect()
 
 
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[o.strip() for o in settings.cors_origins.split(",") if o.strip()],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(users.router, prefix="/api")
 app.include_router(game_sessions.router, prefix="/api")
 app.include_router(prompts.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
+app.include_router(google_forms.router, prefix="/api")
 
 
 @app.get("/api/health")

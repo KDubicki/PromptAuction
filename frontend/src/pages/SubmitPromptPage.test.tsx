@@ -7,6 +7,7 @@ import type { PromptSubmission } from '../types'
 
 vi.mock('../api/hooks', () => ({
   usePrompts: vi.fn(),
+  useEntryForm: vi.fn(() => ({ data: null })),
 }))
 
 function mockPrompts(data: PromptSubmission[], overrides: Record<string, unknown> = {}) {
@@ -40,6 +41,20 @@ describe('SubmitPromptPage', () => {
     expect(screen.getByTitle('Submit prompt form')).toHaveAttribute(
       'src',
       'https://docs.google.com/forms/d/e/abc/viewform?embedded=true',
+    )
+  })
+
+  it('embeds the form the admin connected when no env URL is set', async () => {
+    vi.mocked(hooks.useEntryForm).mockReturnValueOnce({
+      data: { title: 'Entries', responder_url: 'https://docs.google.com/forms/d/e/xyz/viewform?usp=sf_link' },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any)
+    mockPrompts([])
+    const { SubmitPromptPage } = await import('./SubmitPromptPage')
+    render(<SubmitPromptPage />)
+    expect(screen.getByTitle('Submit prompt form')).toHaveAttribute(
+      'src',
+      'https://docs.google.com/forms/d/e/xyz/viewform?usp=sf_link&embedded=true',
     )
   })
 

@@ -4,10 +4,22 @@ import { renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { apiClient } from './client'
-import { usePrompts, useUpdatePromptStatus, useGameSessions } from './hooks'
+import { AxiosError, AxiosHeaders } from 'axios'
+
+import {
+  apiErrorMessage,
+  useConnectGoogleForm,
+  useDisconnectGoogleForm,
+  useEntryForm,
+  useGameSessions,
+  useGoogleFormStatus,
+  usePrompts,
+  useSyncGoogleForm,
+  useUpdatePromptStatus,
+} from './hooks'
 
 vi.mock('./client', () => ({
-  apiClient: { get: vi.fn(), patch: vi.fn() },
+  apiClient: { get: vi.fn(), patch: vi.fn(), put: vi.fn(), post: vi.fn(), delete: vi.fn() },
 }))
 
 function createWrapper() {
@@ -95,5 +107,80 @@ describe('useGameSessions', () => {
     expect(result.current.data).toEqual([
       { id: '1', name: 'Evening Match', status: 'running', current_round: 2, current_iteration: 15 },
     ])
+  })
+})
+
+function axiosError(status?: number, data?: unknown): AxiosError {
+  const config = { headers: new AxiosHeaders() }
+  const response =
+    status === undefined
+      ? undefined
+      : { status, statusText: '', headers: {}, config, data }
+  return new AxiosError('failed', 'ERR', config, null, response)
+}
+
+describe('apiErrorMessage', () => {
+  it('prefers the backend detail message', () => {
+    expect(apiErrorMessage(axiosError(403, { detail: 'No access.' }))).toBe('No access.')
+  })
+
+  it('explains when the API cannot be reached', () => {
+    expect(apiErrorMessage(axiosError())).toBe('Cannot reach the API server.')
+  })
+
+  it('falls back to a generic message', () => {
+    expect(apiErrorMessage(axiosError(422, { detail: [{ msg: 'x' }] }))).toBe('Something went wrong. Try again.')
+    expect(apiErrorMessage(new Error('x'))).toBe('Something went wrong. Try again.')
+  })
+})
+
+describe('Google Form hooks', () => {
+  beforeEach(() => {
+    vi.mocked(apiClient.get).mockReset()
+  })
+
+  it('loads the admin form status', async () => {
+    vi.mocked(apiClient.get).mockResolvedValueOnce({ data: { credentials_configured: true, form: null } })
+    const { result } = renderHook(() => useGoogleFormStatus(), { wrapper: createWrapper() })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(apiClient.get).toHaveBeenCalledWith('/admin/google-form')
+    expect(result.current.data?.credentials_configured).toBe(true)
+  })
+
+  it('connects, syncs and disconnects through the admin endpoints', async () => {
+    vi.mocked(apiClient.put).mockResolvedValueOnce({ data: { form: { form_id: 'abc' } } })
+    vi.mocked(apiClient.post).mockResolvedValueOnce({ data: { imported: 1, skipped: 0 } })
+    vi.mocked(apiClient.delete).mockResolvedValueOnce({ data: undefined })
+    const wrapper = createWrapper()
+
+    const connect = renderHook(() => useConnectGoogleForm(), { wrapper })
+    connect.result.current.mutate('https://docs.google.com/forms/d/abc/edit')
+    await waitFor(() => expect(connect.result.current.isSuccess).toBe(true))
+    expect(apiClient.put).toHaveBeenCalledWith('/admin/google-form', {
+      url: 'https://docs.google.com/forms/d/abc/edit',
+    })
+
+    const sync = renderHook(() => useSyncGoogleForm(), { wrapper })
+    sync.result.current.mutate(undefined)
+    await waitFor(() => expect(sync.result.current.data).toEqual({ imported: 1, skipped: 0 }))
+    expect(apiClient.post).toHaveBeenCalledWith('/admin/google-form/sync')
+
+    const disconnect = renderHook(() => useDisconnectGoogleForm(), { wrapper })
+    disconnect.result.current.mutate(undefined)
+    await waitFor(() => expect(disconnect.result.current.isSuccess).toBe(true))
+    expect(apiClient.delete).toHaveBeenCalledWith('/admin/google-form')
+  })
+
+  it('returns the public entry form, or null when none is connected', async () => {
+    vi.mocked(apiClient.get).mockResolvedValueOnce({ data: { title: 'T', responder_url: 'https://x' } })
+    const first = renderHook(() => useEntryForm(), { wrapper: createWrapper() })
+    await waitFor(() => expect(first.result.current.isSuccess).toBe(true))
+    expect(first.result.current.data).toEqual({ title: 'T', responder_url: 'https://x' })
+    expect(apiClient.get).toHaveBeenCalledWith('/entry-form')
+
+    vi.mocked(apiClient.get).mockRejectedValueOnce(axiosError(404, { detail: 'none' }))
+    const second = renderHook(() => useEntryForm(), { wrapper: createWrapper() })
+    await waitFor(() => expect(second.result.current.isSuccess).toBe(true))
+    expect(second.result.current.data).toBeNull()
   })
 })

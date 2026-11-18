@@ -2,10 +2,17 @@ import { useState } from 'react'
 import { Box, Button, Chip, Stack, TextField, Typography } from '@mui/material'
 
 import { Panel } from '../components/Panel'
-import { usePrompts } from '../api/hooks'
+import { useEntryForm, usePrompts } from '../api/hooks'
 import type { PromptStatus } from '../types'
 
 const GOOGLE_FORM_URL = import.meta.env.VITE_GOOGLE_FORM_URL as string | undefined
+
+/** Google only renders a form inside an iframe when asked for the embedded variant. */
+function embedUrl(responderUrl: string): string {
+  const url = new URL(responderUrl)
+  url.searchParams.set('embedded', 'true')
+  return url.toString()
+}
 
 const STATUS_COLOR: Record<PromptStatus, 'success' | 'error' | 'default'> = {
   accepted: 'success',
@@ -84,6 +91,9 @@ function PromptStatusChecker() {
 }
 
 export function SubmitPromptPage() {
+  const { data: entryForm } = useEntryForm()
+  const formUrl = GOOGLE_FORM_URL || (entryForm ? embedUrl(entryForm.responder_url) : undefined)
+
   return (
     <Stack spacing={3}>
       <Stack spacing={1}>
@@ -97,10 +107,10 @@ export function SubmitPromptPage() {
       </Stack>
 
       <Panel title="Entry form" flush>
-        {GOOGLE_FORM_URL ? (
+        {formUrl ? (
           <Box
             component="iframe"
-            src={GOOGLE_FORM_URL}
+            src={formUrl}
             title="Submit prompt form"
             sx={{
               display: 'block',
@@ -118,8 +128,7 @@ export function SubmitPromptPage() {
               No entry form is configured yet.
             </Typography>
             <Typography variant="body2" sx={{ color: 'text.disabled', maxWidth: '52ch' }}>
-              Set <Box component="code">VITE_GOOGLE_FORM_URL</Box> in{' '}
-              <Box component="code">frontend/.env</Box> to the form&apos;s embed URL, then rebuild.
+              An admin connects the Google Form in the Admin panel.
             </Typography>
           </Stack>
         )}

@@ -6,6 +6,8 @@ import { AdminPanel } from './AdminPanel'
 import * as hooks from '../api/hooks'
 import type { PromptSubmission } from '../types'
 
+vi.mock('./GoogleFormSourcePanel', () => ({ GoogleFormSourcePanel: () => null }))
+
 vi.mock('../api/hooks', () => ({
   usePrompts: vi.fn(),
   useUpdatePromptStatus: vi.fn(),

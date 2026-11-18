@@ -10,6 +10,7 @@ from app.db.mongo import mongo_manager
 from app.main import app, lifespan
 from app.services.config_service import config_service
 from app.services.game_engine import game_engine_service
+from app.services.google_forms import google_forms_service
 from app.services.llm.manager import llm_manager
 
 
@@ -21,6 +22,8 @@ def _stub_infra(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(config_service, "get", AsyncMock(return_value=None))
     monkeypatch.setattr(game_engine_service, "start", MagicMock())
     monkeypatch.setattr(game_engine_service, "stop", AsyncMock())
+    monkeypatch.setattr(google_forms_service, "start", MagicMock())
+    monkeypatch.setattr(google_forms_service, "stop", AsyncMock())
 
 
 async def test_lifespan_configures_llm_when_api_key_present(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -34,6 +37,8 @@ async def test_lifespan_configures_llm_when_api_key_present(monkeypatch: pytest.
     mongo_manager.disconnect.assert_awaited_once()
     game_engine_service.start.assert_called_once()
     game_engine_service.stop.assert_awaited_once()
+    google_forms_service.start.assert_called_once()
+    google_forms_service.stop.assert_awaited_once()
 
 
 async def test_lifespan_configures_ollama_even_without_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -60,3 +65,14 @@ async def test_health_endpoint_reports_llm_status() -> None:
         resp = await ac.get("/api/health")
     assert resp.status_code == 200
     assert resp.json() == {"status": "ok", "llm": "not_configured"}
+
+
+async def test_cors_allows_the_configured_frontend_origin() -> None:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.options(
+            "/api/admin/google-form",
+            headers={"Origin": "http://localhost:5173", "Access-Control-Request-Method": "PUT"},
+        )
+    assert resp.status_code == 200
+    assert resp.headers["access-control-allow-origin"] == "http://localhost:5173"
