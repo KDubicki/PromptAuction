@@ -81,7 +81,15 @@ describe('PlayerDialog', () => {
     render(<PlayerDialog open player={player} onClose={onClose} />)
     await userEvent.type(screen.getByLabelText('Nick'), '2')
     await userEvent.click(screen.getByRole('button', { name: 'Save' }))
-    expect(update).toHaveBeenCalledWith({ id: 'p1', name: 'ada2', email: 'ada@x.io' })
+    expect(update).toHaveBeenCalledWith({ id: 'p1', name: 'ada2' })
+    expect(addVersion).not.toHaveBeenCalled()
+  })
+
+  it('clears the email with an empty string and omits the unchanged nick', async () => {
+    render(<PlayerDialog open player={{ ...player, email: 'a@x.pl' }} onClose={onClose} />)
+    await userEvent.clear(screen.getByLabelText('Email (optional)'))
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+    expect(update).toHaveBeenCalledWith({ id: 'p1', email: '' })
     expect(addVersion).not.toHaveBeenCalled()
   })
 
