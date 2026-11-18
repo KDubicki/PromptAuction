@@ -6,7 +6,12 @@ import { Panel } from './Panel'
 import { apiErrorMessage, useRemoveFromRoster, useStartGameSession } from '../api/hooks'
 import type { GameSession } from '../types'
 
+/** Keyed by session so mutation errors and dialog state never leak between sessions. */
 export function SessionRoster({ session }: { session: GameSession }) {
+  return <SessionRosterBody key={session.id} session={session} />
+}
+
+function SessionRosterBody({ session }: { session: GameSession }) {
   const start = useStartGameSession()
   const remove = useRemoveFromRoster()
   const [adding, setAdding] = useState(false)
@@ -87,6 +92,7 @@ export function SessionRoster({ session }: { session: GameSession }) {
                   variant="outlined"
                   color="error"
                   aria-label={`Remove ${entry.name}`}
+                  disabled={remove.isPending}
                   onClick={() => remove.mutate({ sessionId: session.id, playerId: entry.player_ref })}
                 >
                   Remove
@@ -96,7 +102,7 @@ export function SessionRoster({ session }: { session: GameSession }) {
           </Box>
         ))}
       </Box>
-      <AddPlayersDialog session={session} open={adding} onClose={() => setAdding(false)} />
+      <AddPlayersDialog session={session} open={adding && isPending} onClose={() => setAdding(false)} />
     </Panel>
   )
 }

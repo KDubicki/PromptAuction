@@ -1,5 +1,6 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { SessionRoster } from './SessionRoster'
@@ -103,5 +104,38 @@ describe('SessionRoster', () => {
   it('shows an empty roster hint', () => {
     render(<SessionRoster session={{ ...pending, roster: [] }} />)
     expect(screen.getByText(/No players in this session/)).toBeInTheDocument()
+  })
+
+  it('clears mutation errors and the dialog when the session changes', async () => {
+    vi.mocked(hooks.useStartGameSession).mockImplementation(() => {
+      const [error] = useState(new Error('conflict'))
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return { mutate: start, isPending: false, isError: true, error } as any
+    })
+    const { rerender } = render(<SessionRoster session={pending} />)
+    expect(screen.getByText('msg:conflict')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Add players' }))
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    vi.mocked(hooks.useStartGameSession).mockImplementation(() => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return { mutate: start, isPending: false, isError: false } as any
+    })
+    rerender(<SessionRoster session={{ ...pending, id: 's2', name: 'Other' }} />)
+    expect(screen.queryByText('msg:conflict')).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('drops the add dialog when the session is no longer pending', async () => {
+    const { rerender } = render(<SessionRoster session={pending} />)
+    await userEvent.click(screen.getByRole('button', { name: 'Add players' }))
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    rerender(<SessionRoster session={{ ...pending, status: 'running' }} />)
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+
+  it('disables Remove while a remove is pending', () => {
+    setup({}, { isPending: true })
+    render(<SessionRoster session={pending} />)
+    expect(screen.getByRole('button', { name: 'Remove Aurelia' })).toBeDisabled()
   })
 })
