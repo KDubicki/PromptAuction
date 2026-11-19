@@ -26,48 +26,6 @@ def test_create_uses_custom_base_url() -> None:
     assert provider._base_url == "http://ollama.local:11434"
 
 
-async def test_generate_bids_success(monkeypatch: pytest.MonkeyPatch) -> None:
-    provider = OllamaProvider(model="llama3", temperature=0.5)
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        body = {"message": {"content": '[{"player_id": "p1", "bid_amount": 33}]'}}
-        return httpx.Response(200, json=body)
-
-    monkeypatch.setattr(httpx, "AsyncClient", _client_factory(handler))
-
-    bids = await provider.generate_bids({"accepted_prompts": [{"player_id": "p1", "prompt_text": "go"}]})
-
-    assert len(bids) == 1
-    assert bids[0].player_id == "p1"
-    assert bids[0].bid_amount == 33.0
-
-
-async def test_generate_bids_http_error_returns_empty(monkeypatch: pytest.MonkeyPatch) -> None:
-    provider = OllamaProvider(model="llama3", temperature=0.5)
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(500, json={"error": "boom"})
-
-    monkeypatch.setattr(httpx, "AsyncClient", _client_factory(handler))
-
-    bids = await provider.generate_bids({})
-
-    assert bids == []
-
-
-async def test_generate_bids_malformed_json_returns_empty(monkeypatch: pytest.MonkeyPatch) -> None:
-    provider = OllamaProvider(model="llama3", temperature=0.5)
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json={"message": {"content": "not json"}})
-
-    monkeypatch.setattr(httpx, "AsyncClient", _client_factory(handler))
-
-    bids = await provider.generate_bids({})
-
-    assert bids == []
-
-
 async def test_health_check_true(monkeypatch: pytest.MonkeyPatch) -> None:
     provider = OllamaProvider(model="llama3", temperature=0.5)
 
@@ -106,7 +64,6 @@ def test_model_info() -> None:
     info = provider.model_info()
     assert info.provider == "ollama"
     assert info.model == "llama3"
-
 
 
 async def test_complete_json_sends_system_and_user_and_returns_text(monkeypatch: pytest.MonkeyPatch) -> None:

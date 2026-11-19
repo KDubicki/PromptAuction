@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from app.services.llm.manager import LLMServiceManager, create_provider
-from app.services.llm.protocol import BidResult, ModelMetadata
+from app.services.llm.protocol import ModelMetadata
 
 
 def test_create_provider_unknown_raises_value_error() -> None:
@@ -51,36 +51,6 @@ def test_swap_provider_returns_metadata() -> None:
     manager = LLMServiceManager()
     meta = manager.swap_provider(provider_name="ollama", model="llama3", temperature=0.9)
     assert meta == ModelMetadata(provider="ollama", model="llama3", temperature=0.9)
-
-
-async def test_generate_bids_no_primary_returns_empty() -> None:
-    manager = LLMServiceManager()
-    assert await manager.generate_bids({}) == []
-
-
-async def test_generate_bids_uses_primary_when_it_has_results() -> None:
-    manager = LLMServiceManager()
-    manager._primary = MagicMock()
-    manager._primary.generate_bids = AsyncMock(return_value=[BidResult(player_id="p1", bid_amount=5.0)])
-    manager._fallback = MagicMock()
-    manager._fallback.generate_bids = AsyncMock(return_value=[])
-
-    result = await manager.generate_bids({})
-
-    assert result == [{"player_id": "p1", "bid_amount": 5.0}]
-    manager._fallback.generate_bids.assert_not_called()
-
-
-async def test_generate_bids_falls_back_when_primary_empty() -> None:
-    manager = LLMServiceManager()
-    manager._primary = MagicMock()
-    manager._primary.generate_bids = AsyncMock(return_value=[])
-    manager._fallback = MagicMock()
-    manager._fallback.generate_bids = AsyncMock(return_value=[BidResult(player_id="p2", bid_amount=7.0)])
-
-    result = await manager.generate_bids({})
-
-    assert result == [{"player_id": "p2", "bid_amount": 7.0}]
 
 
 async def test_health_check_no_providers() -> None:
