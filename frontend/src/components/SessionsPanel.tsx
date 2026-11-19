@@ -31,7 +31,7 @@ export function SessionsPanel({ selectedId, onSelect }: Props) {
     if (!canCreate) return
     setCreateError(null)
     try {
-      const created = await create.mutateAsync(trimmed)
+      const created = await create.mutateAsync({ name: trimmed })
       setName('')
       onSelect(created.id)
     } catch (e) {

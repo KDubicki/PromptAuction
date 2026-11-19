@@ -17,9 +17,15 @@ const make = (id: string, status: GameStatus, n = 0): GameSession => ({
   name: `Session ${id}`,
   status,
   roster: Array.from({ length: n }, (_, i) => ({
-    player_ref: `p${i}`, name: `P${i}`, current_version: 1, version_id: null, version: null, prompt_text: null,
+    player_ref: `p${i}`, name: `P${i}`, current_version: 1, version_id: null, version: null, prompt_text: null, budget: null, items: [],
   })),
   start_blockers: [],
+  settings: { budget: 100, lots_count: 5, max_rounds: 10 },
+  required_items: [],
+  lots: [],
+  auction: null,
+  standings: [],
+  pause_reason: null,
   current_round: 0,
   current_iteration: 0,
   started_at: null,
@@ -85,7 +91,7 @@ describe('SessionsPanel', () => {
     expect(create).toBeDisabled()
     await userEvent.type(screen.getByLabelText('Session name'), '  Friday  ')
     await userEvent.click(create)
-    expect(mutateAsync).toHaveBeenCalledWith('Friday')
+    expect(mutateAsync).toHaveBeenCalledWith({ name: 'Friday' })
     expect(onSelect).toHaveBeenCalledWith('new')
     expect(screen.getByLabelText('Session name')).toHaveValue('')
   })
@@ -105,7 +111,7 @@ describe('SessionsPanel', () => {
     setup([])
     render(<SessionsPanel selectedId={null} onSelect={onSelect} />)
     await userEvent.type(screen.getByLabelText('Session name'), 'Quick{Enter}')
-    expect(mutateAsync).toHaveBeenCalledWith('Quick')
+    expect(mutateAsync).toHaveBeenCalledWith({ name: 'Quick' })
   })
 
   it('shows the create error and does not select', async () => {
