@@ -33,10 +33,10 @@ class AnthropicProvider:
         )
 
         try:
+            # No temperature: API version 2026-10-21 removed sampling parameters (400 on every model).
             response = await self._client.messages.create(
                 model=self._model,
                 max_tokens=1024,
-                temperature=self._temperature,
                 system=BID_SYSTEM_PROMPT,
                 messages=[{"role": "user", "content": user_message}],
             )

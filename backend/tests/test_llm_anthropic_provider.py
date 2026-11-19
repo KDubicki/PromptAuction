@@ -90,3 +90,16 @@ def test_model_info() -> None:
     info = provider.model_info()
     assert info.provider == "anthropic"
     assert info.model == "claude-sonnet-4"
+
+
+async def test_generate_bids_sends_no_sampling_parameters() -> None:
+    # API version 2026-10-21 (anthropic SDK 2.x) rejects temperature/top_p/top_k with a 400.
+    provider = AnthropicProvider(api_key="k", model="claude-sonnet-4", temperature=0.3)
+    create_mock = AsyncMock(return_value=SimpleNamespace(content=[_text_block("[]")]))
+    provider._client.messages.create = create_mock
+
+    await provider.generate_bids({})
+
+    sent = create_mock.await_args.kwargs
+    assert not {"temperature", "top_p", "top_k"} & sent.keys()
+    assert sent["max_tokens"] == 1024
