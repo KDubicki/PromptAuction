@@ -16,6 +16,13 @@ class PromptSubmissionCreate(BaseModel):
     email: str | None = Field(default=None, max_length=320)
     form_response_id: str | None = Field(default=None, max_length=200)
 
+    @field_validator("form_response_id", mode="before")
+    @classmethod
+    def _blank_form_response_id_to_none(cls, value: object) -> object:
+        if isinstance(value, str):
+            return value.strip() or None
+        return value
+
     @field_validator("player_id", mode="before")
     @classmethod
     def _strip_player_id(cls, value: object) -> object:
