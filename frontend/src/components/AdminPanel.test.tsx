@@ -67,6 +67,17 @@ describe('AdminPanel', () => {
     mockedUseUpdatePromptStatus.mockReturnValue({ mutate, isPending: false } as any)
   })
 
+  it('describes the session flow in the subtitle', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    mockedUsePrompts.mockReturnValue({ data: [] } as any)
+    render(<AdminPanel />)
+    expect(
+      screen.getByText(
+        'Create a session, add players, and start it. Each player bids with the prompt version they had when the session started.',
+      ),
+    ).toBeInTheDocument()
+  })
+
   it('shows an empty-state message when there are no pending prompts', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     mockedUsePrompts.mockReturnValue({ data: [] } as any)

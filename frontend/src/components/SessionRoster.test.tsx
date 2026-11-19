@@ -57,6 +57,11 @@ describe('SessionRoster', () => {
     expect(screen.getByText('No accepted prompt yet')).toBeInTheDocument()
   })
 
+  it('uses the singular for one player', () => {
+    render(<SessionRoster session={{ ...pending, roster: pending.roster.slice(0, 1) }} />)
+    expect(screen.getByText('1 player')).toBeInTheDocument()
+  })
+
   it('starts the session', async () => {
     render(<SessionRoster session={pending} />)
     await userEvent.click(screen.getByRole('button', { name: 'Start session' }))

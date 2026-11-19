@@ -11,6 +11,7 @@ import type {
   PlayerDetail,
   PromptStatus,
   PromptSubmission,
+  PromptVersion,
 } from '../types'
 
 /** The backend's `detail` message when there is one, so admins see what to fix. */
@@ -79,6 +80,8 @@ function useGoogleFormMutation<TVariables, TResult>(request: (variables: TVariab
       queryClient.invalidateQueries({ queryKey: GOOGLE_FORM_KEY })
       queryClient.invalidateQueries({ queryKey: ['prompts'] })
       queryClient.invalidateQueries({ queryKey: ['entry-form'] })
+      queryClient.invalidateQueries({ queryKey: ['players'] })
+      queryClient.invalidateQueries({ queryKey: ['game-sessions'] })
     },
   })
 }
@@ -177,7 +180,7 @@ export function useUpdatePlayer() {
 
 export function useAddPromptVersion() {
   return useRosterMutation(async ({ id, prompt_text }: { id: string; prompt_text: string }) => {
-    const { data } = await apiClient.post<PlayerDetail>(`/players/${id}/versions`, { prompt_text })
+    const { data } = await apiClient.post<PromptVersion>(`/players/${id}/versions`, { prompt_text })
     return data
   })
 }

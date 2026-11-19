@@ -13,7 +13,7 @@ vi.mock('../api/hooks', () => ({
 }))
 
 const mkPlayer = (id: string, name: string): Player => ({
-  id, name, email: null, current_version: null, pending_versions: 0, created_at: null,
+  id, name, email: null, current_version: null, pending_versions: 0, latest_version: 0, created_at: null,
 })
 
 const session: GameSession = {

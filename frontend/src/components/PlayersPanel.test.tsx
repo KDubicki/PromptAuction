@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -21,7 +21,7 @@ vi.mock('./PlayerHistoryDialog', () => ({
 }))
 
 const withPrompt: Player = {
-  id: 'p1', name: 'ada', email: null, pending_versions: 0, created_at: null,
+  id: 'p1', name: 'ada', email: null, pending_versions: 0, latest_version: 3, created_at: null,
   current_version: {
     id: 'v', version: 3, prompt_text: 'bid low', status: 'accepted', source: 'admin',
     player_name: 'ada', identity_warning: null, email: null, created_at: null,
@@ -74,9 +74,9 @@ describe('PlayersPanel', () => {
     render(<PlayersPanel />)
     await userEvent.click(screen.getByRole('button', { name: 'Add player' }))
     expect(screen.getByText('dialog:new')).toBeInTheDocument()
-    await userEvent.click(within(screen.getByRole('listitem')).getByRole('button', { name: 'Edit' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Edit ada' }))
     expect(screen.getByText('dialog:ada')).toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: 'History' }))
+    await userEvent.click(screen.getByRole('button', { name: 'History ada' }))
     expect(screen.getByText('history:p1')).toBeInTheDocument()
   })
 
@@ -84,11 +84,25 @@ describe('PlayersPanel', () => {
     mockPlayers({ data: [withPrompt] })
     const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true)
     render(<PlayersPanel />)
-    await userEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Delete ada' }))
     expect(confirm).toHaveBeenCalledWith('Delete ada and all prompt versions?')
     expect(mutate).not.toHaveBeenCalled()
-    await userEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Delete ada' }))
     expect(mutate).toHaveBeenCalledWith('p1')
+  })
+
+  it('disables Delete while a delete is pending', () => {
+    mockPlayers({ data: [withPrompt] })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.mocked(hooks.useDeletePlayer).mockReturnValue({ mutate, isError: false, isPending: true } as any)
+    render(<PlayersPanel />)
+    expect(screen.getByRole('button', { name: 'Delete ada' })).toBeDisabled()
+  })
+
+  it('uses the singular for one player', () => {
+    mockPlayers({ data: [withPrompt] })
+    render(<PlayersPanel />)
+    expect(screen.getByText('1 player')).toBeInTheDocument()
   })
 
   it('shows a delete error', () => {

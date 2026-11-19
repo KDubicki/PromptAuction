@@ -52,6 +52,19 @@ describe('SessionsPanel', () => {
     expect(screen.getByText('4 sessions')).toBeInTheDocument()
   })
 
+  it('uses the singular for one player and one session', () => {
+    setup([make('1', 'pending', 1)])
+    render(<SessionsPanel selectedId={null} onSelect={onSelect} />)
+    expect(screen.getByText('1 player')).toBeInTheDocument()
+    expect(screen.getByText('1 session')).toBeInTheDocument()
+  })
+
+  it('gives the session name field an accessible name', () => {
+    setup([])
+    render(<SessionsPanel selectedId={null} onSelect={onSelect} />)
+    expect(screen.getByRole('textbox', { name: 'Session name' })).toBeInTheDocument()
+  })
+
   it('selects a session on click', async () => {
     setup([make('1', 'pending')])
     render(<SessionsPanel selectedId={null} onSelect={onSelect} />)

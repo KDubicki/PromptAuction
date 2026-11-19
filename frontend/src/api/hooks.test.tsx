@@ -188,6 +188,22 @@ describe('Google Form hooks', () => {
     expect(apiClient.delete).toHaveBeenCalledWith('/admin/google-form')
   })
 
+  it('google form mutations also invalidate players and game sessions', async () => {
+    vi.mocked(apiClient.post).mockResolvedValueOnce({ data: { imported: 1, skipped: 0 } })
+    const queryClient = new QueryClient()
+    const spy = vi.spyOn(queryClient, 'invalidateQueries')
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    )
+    const sync = renderHook(() => useSyncGoogleForm(), { wrapper })
+    sync.result.current.mutate(undefined)
+    await waitFor(() => expect(sync.result.current.isSuccess).toBe(true))
+    await waitFor(() => {
+      const keys = spy.mock.calls.map((c) => (c[0] as { queryKey: string[] }).queryKey[0])
+      expect(keys).toEqual(expect.arrayContaining(['players', 'game-sessions']))
+    })
+  })
+
   it('returns the public entry form, or null when none is connected', async () => {
     vi.mocked(apiClient.get).mockResolvedValueOnce({ data: { title: 'T', responder_url: 'https://x' } })
     const first = renderHook(() => useEntryForm(), { wrapper: createWrapper() })

@@ -22,6 +22,7 @@ const player: Player = {
     player_name: 'ada', identity_warning: null, email: null, created_at: null,
   },
   pending_versions: 0,
+  latest_version: 2,
   created_at: null,
 }
 
@@ -102,7 +103,7 @@ describe('PlayerDialog', () => {
   })
 
   it('handles a player without a current version', async () => {
-    render(<PlayerDialog open player={{ ...player, email: null, current_version: null }} onClose={onClose} />)
+    render(<PlayerDialog open player={{ ...player, email: null, current_version: null, latest_version: 0 }} onClose={onClose} />)
     expect(screen.getByText('Saving a changed prompt creates version 1.')).toBeInTheDocument()
     await userEvent.type(screen.getByLabelText('Prompt'), 'first')
     await userEvent.click(screen.getByRole('button', { name: 'Save' }))
@@ -179,5 +180,23 @@ describe('PlayerDialog', () => {
     render(<PlayerDialog open player={null} onClose={onClose} />)
     await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it('hints the next version from the latest version, including pending ones', () => {
+    render(<PlayerDialog open player={{ ...player, latest_version: 5 }} onClose={onClose} />)
+    expect(screen.getByText('Saving a changed prompt creates version 6.')).toBeInTheDocument()
+  })
+
+  it('blocks Cancel while saving', async () => {
+    let release: () => void = () => {}
+    update.mockReturnValue(new Promise<void>((resolve) => { release = resolve }))
+    render(<PlayerDialog open player={player} onClose={onClose} />)
+    await userEvent.type(screen.getByLabelText('Nick'), 'x')
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled()
+    await userEvent.keyboard('{Escape}')
+    expect(onClose).not.toHaveBeenCalled()
+    release()
+    await waitFor(() => expect(onClose).toHaveBeenCalled())
   })
 })

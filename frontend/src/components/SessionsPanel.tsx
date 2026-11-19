@@ -3,6 +3,7 @@ import { Alert, Box, Button, ButtonBase, Stack, TextField, Typography } from '@m
 
 import { Panel } from './Panel'
 import { apiErrorMessage, useCreateGameSession, useGameSessions } from '../api/hooks'
+import { pluralize } from '../plural'
 import type { GameStatus } from '../types'
 
 interface Props {
@@ -39,7 +40,7 @@ export function SessionsPanel({ selectedId, onSelect }: Props) {
   }
 
   return (
-    <Panel title="Sessions" slug={`${sessions.length} sessions`} flush>
+    <Panel title="Sessions" slug={pluralize(sessions.length, 'session')} flush>
       <Stack
         direction="row"
         component="form"
@@ -52,6 +53,8 @@ export function SessionsPanel({ selectedId, onSelect }: Props) {
         <TextField
           size="small"
           label="Session name"
+          id="session-name"
+          slotProps={{ htmlInput: { 'aria-label': 'Session name' } }}
           value={name}
           onChange={(event) => setName(event.target.value)}
           sx={{ flex: 1, minWidth: 0 }}
@@ -94,7 +97,7 @@ export function SessionsPanel({ selectedId, onSelect }: Props) {
                 </Typography>
               </Box>
               <Typography variant="caption" data-figure sx={{ color: 'text.secondary', flexShrink: 0 }}>
-                {session.roster.length} players
+                {pluralize(session.roster.length, 'player')}
               </Typography>
             </ButtonBase>
           </Box>
