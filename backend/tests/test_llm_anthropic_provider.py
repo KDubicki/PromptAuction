@@ -19,59 +19,6 @@ def test_create_builds_provider() -> None:
     assert provider.model_info().provider == "anthropic"
 
 
-async def test_generate_bids_extracts_json_array_from_prose() -> None:
-    provider = AnthropicProvider(api_key="k", model="claude-sonnet-4", temperature=0.3)
-    text = 'Sure! Here you go: [{"player_id": "p1", "bid_amount": 20}] Hope that helps.'
-    provider._client.messages.create = AsyncMock(return_value=SimpleNamespace(content=[_text_block(text)]))
-
-    bids = await provider.generate_bids({"accepted_prompts": [{"player_id": "p1", "prompt_text": "go"}]})
-
-    assert len(bids) == 1
-    assert bids[0].player_id == "p1"
-    assert bids[0].bid_amount == 20.0
-
-
-async def test_generate_bids_pure_json_without_brackets_wrapper() -> None:
-    provider = AnthropicProvider(api_key="k", model="claude-sonnet-4", temperature=0.3)
-    provider._client.messages.create = AsyncMock(
-        return_value=SimpleNamespace(content=[_text_block("not json at all")])
-    )
-
-    bids = await provider.generate_bids({})
-
-    assert bids == []
-
-
-async def test_generate_bids_clamps_bid_amount() -> None:
-    provider = AnthropicProvider(api_key="k", model="claude-sonnet-4", temperature=0.3)
-    provider._client.messages.create = AsyncMock(
-        return_value=SimpleNamespace(content=[_text_block('[{"player_id": "p1", "bid_amount": -5}]')])
-    )
-
-    bids = await provider.generate_bids({})
-
-    assert bids[0].bid_amount == 1.0
-
-
-async def test_generate_bids_non_text_block_returns_empty() -> None:
-    provider = AnthropicProvider(api_key="k", model="claude-sonnet-4", temperature=0.3)
-    non_text_block = SimpleNamespace(type="tool_use")
-    provider._client.messages.create = AsyncMock(return_value=SimpleNamespace(content=[non_text_block]))
-
-    bids = await provider.generate_bids({})
-
-    assert bids == []
-
-
-async def test_generate_bids_returns_empty_on_exception() -> None:
-    provider = AnthropicProvider(api_key="k", model="claude-sonnet-4", temperature=0.3)
-    provider._client.messages.create = AsyncMock(side_effect=RuntimeError("boom"))
-
-    bids = await provider.generate_bids({})
-
-    assert bids == []
-
-
 async def test_health_check_true() -> None:
     provider = AnthropicProvider(api_key="k", model="claude-sonnet-4", temperature=0.3)
     provider._client.messages.create = AsyncMock(return_value=SimpleNamespace(content=[_text_block("pong")]))
@@ -93,13 +40,13 @@ def test_model_info() -> None:
     assert info.model == "claude-sonnet-4"
 
 
-async def test_generate_bids_sends_no_sampling_parameters() -> None:
+async def test_complete_json_sends_no_sampling_parameters() -> None:
     # API version 2026-10-21 (anthropic SDK 2.x) rejects temperature/top_p/top_k with a 400.
     provider = AnthropicProvider(api_key="k", model="claude-sonnet-4", temperature=0.3)
-    create_mock = AsyncMock(return_value=SimpleNamespace(content=[_text_block("[]")]))
+    create_mock = AsyncMock(return_value=SimpleNamespace(content=[_text_block("{}")]))
     provider._client.messages.create = create_mock
 
-    await provider.generate_bids({})
+    await provider.complete_json("S", "U")
 
     sent = create_mock.await_args.kwargs
     assert not {"temperature", "top_p", "top_k"} & sent.keys()

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from app.services.llm.protocol import LLMProvider, ModelMetadata
 
@@ -66,18 +65,6 @@ class LLMServiceManager:
     ) -> ModelMetadata:
         self._primary = create_provider(provider_name, api_key, model, temperature, base_url)
         return self._primary.model_info()
-
-    async def generate_bids(self, context: dict) -> list[dict[str, Any]]:
-        if self._primary is None:
-            logger.warning("No LLM provider configured, returning empty bids")
-            return []
-
-        bids = await self._primary.generate_bids(context)
-        if not bids and self._fallback:
-            logger.info("Primary provider returned no bids, trying fallback")
-            bids = await self._fallback.generate_bids(context)
-
-        return [b.model_dump() for b in bids]
 
     async def complete_json(self, system: str, user: str) -> str:
         if self._primary is None:
