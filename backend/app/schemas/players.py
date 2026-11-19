@@ -56,6 +56,7 @@ class PlayerOut(BaseModel):
     email: str | None = None
     current_version: PromptVersionOut | None = None
     pending_versions: int = 0
+    latest_version: int = 0
     created_at: datetime | None = None
 
 

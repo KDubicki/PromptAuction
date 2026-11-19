@@ -297,3 +297,13 @@ def test_parse_object_id() -> None:
         parse_object_id("nope", "Player not found")
     assert exc.value.status_code == 404
     assert exc.value.detail == "Player not found"
+
+
+async def test_latest_version_counts_pending(client: AsyncClient) -> None:
+    created = (await client.post("/api/players", json={"name": "Lat", "prompt_text": "First."})).json()
+    assert created["latest_version"] == 1
+    resp = await client.post("/api/prompts/webhook", json={"player_id": "Lat", "prompt_text": "Second."})
+    assert resp.status_code == 201
+    body = (await client.get(f"/api/players/{created['id']}")).json()
+    assert body["current_version"]["version"] == 1
+    assert body["latest_version"] == 2

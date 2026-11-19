@@ -255,3 +255,35 @@ async def test_webhook_rejects_bad_nick(client: AsyncClient, mock_db: AsyncIOMot
         assert resp.status_code == 422
     assert await mock_db.players.count_documents({}) == 0
     assert await mock_db.prompts.count_documents({}) == 0
+
+
+async def test_blank_form_response_id_does_not_collide(
+    client: AsyncClient, mock_db: AsyncIOMotorDatabase
+) -> None:
+    await mock_db.prompts.create_index([("form_response_id", ASCENDING)], unique=True, sparse=True)
+    first = await client.post(
+        "/api/prompts/webhook",
+        json={"player_id": "Alice", "prompt_text": "Alice text", "form_response_id": ""},
+    )
+    second = await client.post(
+        "/api/prompts/webhook", json={"player_id": "Bob", "prompt_text": "Bob text", "form_response_id": "  "}
+    )
+    assert (first.status_code, second.status_code) == (201, 201)
+    assert first.json()["player_id"] == "Alice"
+    assert second.json()["player_id"] == "Bob"
+    assert await mock_db.players.count_documents({}) == 2
+    async for doc in mock_db.prompts.find():
+        assert doc["version"] == 1
+        assert "form_response_id" not in doc
+
+
+async def test_submit_from_outside_blank_form_response_id(mock_db: AsyncIOMotorDatabase) -> None:
+    await mock_db.prompts.create_index([("form_response_id", ASCENDING)], unique=True, sparse=True)
+    a = await submit_from_outside(
+        mock_db, name="Al", email=None, prompt_text="Al text", form_response_id=" ", source="google_forms"
+    )
+    b = await submit_from_outside(
+        mock_db, name="Bo", email=None, prompt_text="Bo text", form_response_id="", source="google_forms"
+    )
+    assert a.created and b.created
+    assert b.version is not None and b.version["player_id"] == "Bo"

@@ -225,6 +225,7 @@ async def submit_from_outside(
     email = _clean_email(email)
     name_k = name_key(name)
     email_k = email_key(email)
+    form_response_id = (form_response_id or "").strip() or None
 
     if form_response_id:
         existing = await db.prompts.find_one({"form_response_id": form_response_id})
@@ -377,13 +378,16 @@ async def _current_version(db: AsyncIOMotorDatabase, player: dict) -> PromptVers
 
 
 async def player_out(db: AsyncIOMotorDatabase, player: dict) -> PlayerOut:
-    pending = await db.prompts.count_documents({"player_ref": str(player["_id"]), "status": "pending"})
+    player_ref = str(player["_id"])
+    pending = await db.prompts.count_documents({"player_ref": player_ref, "status": "pending"})
+    latest = await db.prompts.find_one({"player_ref": player_ref}, sort=[("version", -1)])
     return PlayerOut(
         id=str(player["_id"]),
         name=player["name"],
         email=player.get("email"),
         current_version=await _current_version(db, player),
         pending_versions=pending,
+        latest_version=latest["version"] if latest else 0,
         created_at=player.get("created_at"),
     )
 
