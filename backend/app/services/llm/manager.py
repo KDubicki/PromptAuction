@@ -11,6 +11,7 @@ _PROVIDERS: dict[str, str] = {
     "openai": "app.services.llm.openai_provider",
     "anthropic": "app.services.llm.anthropic_provider",
     "ollama": "app.services.llm.ollama_provider",
+    "gemini": "app.services.llm.gemini_provider",
 }
 
 
