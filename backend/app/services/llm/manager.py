@@ -79,6 +79,22 @@ class LLMServiceManager:
 
         return [b.model_dump() for b in bids]
 
+    async def complete_json(self, system: str, user: str) -> str:
+        if self._primary is None:
+            raise RuntimeError("No LLM provider configured")
+
+        try:
+            text = await self._primary.complete_json(system, user)
+            if text.strip() or self._fallback is None:
+                return text
+            logger.info("Primary provider returned empty text, trying fallback")
+        except Exception as e:
+            if self._fallback is None:
+                raise
+            logger.warning("Primary provider failed (%s), trying fallback", e)
+
+        return await self._fallback.complete_json(system, user)
+
     async def health_check(self) -> dict[str, bool]:
         result: dict[str, bool] = {}
         if self._primary:

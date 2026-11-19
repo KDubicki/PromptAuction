@@ -3,6 +3,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
+import pytest
 from anthropic.types import TextBlock
 
 from app.services.llm.anthropic_provider import AnthropicProvider, create
@@ -103,3 +104,37 @@ async def test_generate_bids_sends_no_sampling_parameters() -> None:
     sent = create_mock.await_args.kwargs
     assert not {"temperature", "top_p", "top_k"} & sent.keys()
     assert sent["max_tokens"] == 1024
+
+
+async def test_complete_json_sends_system_and_user_and_returns_text() -> None:
+    provider = AnthropicProvider(api_key="k", model="claude-sonnet-4", temperature=0.3)
+    mock = AsyncMock(return_value=SimpleNamespace(content=[_text_block('{"a": 1}')]))
+    provider._client.messages.create = mock
+
+    assert await provider.complete_json("S", "U") == '{"a": 1}'
+
+    kwargs = mock.await_args.kwargs
+    assert kwargs == {
+        "model": "claude-sonnet-4",
+        "max_tokens": 1024,
+        "system": "S",
+        "messages": [{"role": "user", "content": "U"}],
+    }
+    assert "temperature" not in kwargs
+
+
+async def test_complete_json_non_text_block_raises() -> None:
+    provider = AnthropicProvider(api_key="k", model="m", temperature=0.3)
+    block = SimpleNamespace(type="tool_use")
+    provider._client.messages.create = AsyncMock(return_value=SimpleNamespace(content=[block]))
+
+    with pytest.raises(ValueError):
+        await provider.complete_json("S", "U")
+
+
+async def test_complete_json_propagates_api_errors() -> None:
+    provider = AnthropicProvider(api_key="k", model="m", temperature=0.3)
+    provider._client.messages.create = AsyncMock(side_effect=RuntimeError("boom"))
+
+    with pytest.raises(RuntimeError, match="boom"):
+        await provider.complete_json("S", "U")

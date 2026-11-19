@@ -3,6 +3,8 @@ from __future__ import annotations
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
+import pytest
+
 from app.services.llm.openai_provider import OpenAIProvider, create
 
 
@@ -102,3 +104,35 @@ def test_model_info() -> None:
     assert info.provider == "openai"
     assert info.model == "gpt-4o-mini"
     assert info.temperature == 0.5
+
+
+async def test_complete_json_sends_system_and_user_and_returns_text() -> None:
+    provider = OpenAIProvider(api_key="k", model="gpt-4o-mini", temperature=0.5)
+    mock = AsyncMock(return_value=_make_response('{"a": 1}'))
+    provider._client.chat.completions.create = mock
+
+    assert await provider.complete_json("S", "U") == '{"a": 1}'
+
+    kwargs = mock.await_args.kwargs
+    assert kwargs["model"] == "gpt-4o-mini"
+    assert kwargs["temperature"] == 0.5
+    assert kwargs["response_format"] == {"type": "json_object"}
+    assert kwargs["messages"] == [
+        {"role": "system", "content": "S"},
+        {"role": "user", "content": "U"},
+    ]
+
+
+async def test_complete_json_none_content_returns_empty() -> None:
+    provider = OpenAIProvider(api_key="k", model="m", temperature=0.5)
+    provider._client.chat.completions.create = AsyncMock(return_value=_make_response(None))  # type: ignore[arg-type]
+
+    assert await provider.complete_json("S", "U") == ""
+
+
+async def test_complete_json_propagates_api_errors() -> None:
+    provider = OpenAIProvider(api_key="k", model="m", temperature=0.5)
+    provider._client.chat.completions.create = AsyncMock(side_effect=RuntimeError("boom"))
+
+    with pytest.raises(RuntimeError, match="boom"):
+        await provider.complete_json("S", "U")

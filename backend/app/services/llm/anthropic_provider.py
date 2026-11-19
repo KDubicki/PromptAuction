@@ -61,6 +61,18 @@ class AnthropicProvider:
             logger.error("Anthropic generate_bids failed: %s", e)
             return []
 
+    async def complete_json(self, system: str, user: str) -> str:
+        response = await self._client.messages.create(
+            model=self._model,
+            max_tokens=1024,
+            system=system,
+            messages=[{"role": "user", "content": user}],
+        )
+        block = response.content[0] if response.content else None
+        if not isinstance(block, TextBlock):
+            raise ValueError(f"Unexpected content block type: {type(block).__name__}")
+        return block.text
+
     async def health_check(self) -> bool:
         try:
             await self._client.messages.create(

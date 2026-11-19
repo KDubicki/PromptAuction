@@ -64,6 +64,24 @@ class OllamaProvider:
             logger.error("Ollama generate_bids failed: %s", e)
             return []
 
+    async def complete_json(self, system: str, user: str) -> str:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(
+                f"{self._base_url}/api/chat",
+                json={
+                    "model": self._model,
+                    "messages": [
+                        {"role": "system", "content": system},
+                        {"role": "user", "content": user},
+                    ],
+                    "format": "json",
+                    "stream": False,
+                    "options": {"temperature": self._temperature},
+                },
+            )
+            response.raise_for_status()
+            return str(response.json()["message"]["content"])
+
     async def health_check(self) -> bool:
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:

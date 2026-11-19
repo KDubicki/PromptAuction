@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock
 
+import pytest
 from google.genai import types
 
 from app.services.llm.gemini_provider import BID_SYSTEM_PROMPT, GeminiProvider, create
@@ -79,3 +80,30 @@ async def test_health_check_reads_the_configured_model() -> None:
 
     get.side_effect = RuntimeError("invalid key")
     assert await provider.health_check() is False
+
+
+async def test_complete_json_sends_system_and_user_and_returns_text() -> None:
+    provider, mock = _provider('{"a": 1}')
+
+    assert await provider.complete_json("S", "U") == '{"a": 1}'
+
+    kwargs = mock.await_args.kwargs
+    assert kwargs["model"] == "gemini-2.5-flash"
+    assert kwargs["contents"] == "U"
+    assert kwargs["config"].system_instruction == "S"
+    assert kwargs["config"].temperature == 0.4
+    assert kwargs["config"].response_mime_type == "application/json"
+
+
+async def test_complete_json_no_text_returns_empty() -> None:
+    provider, _ = _provider(None)
+
+    assert await provider.complete_json("S", "U") == ""
+
+
+async def test_complete_json_propagates_api_errors() -> None:
+    provider, mock = _provider()
+    mock.side_effect = RuntimeError("boom")
+
+    with pytest.raises(RuntimeError, match="boom"):
+        await provider.complete_json("S", "U")
