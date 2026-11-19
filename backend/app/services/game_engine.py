@@ -80,25 +80,28 @@ class GameEngineService:
             "bid_max": cfg.bid_max,
             "game_mode": cfg.game_mode,
         }
-        bids = await llm_service.generate_bids(context=context)
+        bids = await llm_service.generate_bids_per_player(context=context)
         if bids:
             from datetime import datetime
 
             now = datetime.now(UTC)
-            await db.player_bids.insert_many(
-                [
-                    {
-                        "player_id": bid["player_id"],
-                        "player_ref": player_refs.get(bid["player_id"]),
-                        "item_name": current_item,
-                        "bid_amount": max(cfg.bid_min, min(cfg.bid_max, float(bid["bid_amount"]))),
-                        "won": False,
-                        "session_id": str(session["_id"]),
-                        "created_at": now,
-                    }
-                    for bid in bids
-                ]
-            )
+            docs = [
+                {
+                    "player_id": bid["player_id"],
+                    "player_ref": player_refs.get(bid["player_id"]),
+                    "item_name": current_item,
+                    "bid_amount": max(cfg.bid_min, min(cfg.bid_max, float(bid["bid_amount"]))),
+                    "response_ms": bid.get("response_ms"),
+                    "won": False,
+                    "session_id": str(session["_id"]),
+                    "created_at": now,
+                }
+                for bid in bids
+            ]
+            # Highest clamped bid takes the lot; on a tie, the reply that came back first.
+            winner = min(docs, key=lambda d: (-d["bid_amount"], d["response_ms"] or float("inf")))
+            winner["won"] = True
+            await db.player_bids.insert_many(docs)
 
         await db.game_sessions.update_one(
             {"_id": session["_id"]},
