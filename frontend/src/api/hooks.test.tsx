@@ -21,8 +21,10 @@ import {
   usePlayer,
   usePlayers,
   useRemoveFromRoster,
+  useSessionBids,
   useStartGameSession,
   useUpdatePlayer,
+  useUpdateSessionSettings,
   usePrompts,
   useSyncGoogleForm,
   useUpdatePromptStatus,
@@ -275,8 +277,41 @@ describe('player and roster hooks', () => {
 
   it('useCreateGameSession posts the name', async () => {
     const { result } = renderHook(() => useCreateGameSession(), { wrapper: createWrapper() })
-    await result.current.mutateAsync('Evening')
+    await result.current.mutateAsync({ name: 'Evening' })
     expect(apiClient.post).toHaveBeenCalledWith('/game-sessions', { name: 'Evening' })
+  })
+
+  it('useCreateGameSession posts settings when given', async () => {
+    const settings = { budget: 100, lots_count: 5, max_rounds: 10 }
+    const { result } = renderHook(() => useCreateGameSession(), { wrapper: createWrapper() })
+    await result.current.mutateAsync({ name: 'Evening', settings })
+    expect(apiClient.post).toHaveBeenCalledWith('/game-sessions', { name: 'Evening', settings })
+  })
+
+  it('useUpdateSessionSettings patches the settings', async () => {
+    const settings = { budget: 50, lots_count: 3, max_rounds: 4 }
+    const { result } = renderHook(() => useUpdateSessionSettings(), { wrapper: createWrapper() })
+    await result.current.mutateAsync({ sessionId: 's1', settings })
+    expect(apiClient.patch).toHaveBeenCalledWith('/game-sessions/s1', { settings })
+  })
+
+  it('useSessionBids fetches all bids of a session', async () => {
+    vi.mocked(apiClient.get).mockResolvedValueOnce({ data: [{ lot_number: 1 }] })
+    const { result } = renderHook(() => useSessionBids('s1'), { wrapper: createWrapper() })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(apiClient.get).toHaveBeenCalledWith('/game-sessions/s1/bids', { params: undefined })
+  })
+
+  it('useSessionBids filters by lot number', async () => {
+    vi.mocked(apiClient.get).mockResolvedValueOnce({ data: [] })
+    const { result } = renderHook(() => useSessionBids('s1', 2), { wrapper: createWrapper() })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(apiClient.get).toHaveBeenCalledWith('/game-sessions/s1/bids', { params: { lot_number: 2 } })
+  })
+
+  it('useSessionBids is disabled without a session', () => {
+    renderHook(() => useSessionBids(null), { wrapper: createWrapper() })
+    expect(apiClient.get).not.toHaveBeenCalled()
   })
 
   it('useAddToRoster posts the player id', async () => {
@@ -308,5 +343,24 @@ describe('player and roster hooks', () => {
     await waitFor(() => expect(spy).toHaveBeenCalledTimes(3))
     const keys = spy.mock.calls.map((c) => (c[0] as { queryKey: string[] }).queryKey[0])
     expect(keys).toEqual(['players', 'game-sessions', 'prompts'])
+  })
+})
+
+describe('useGameSessions refetch interval', () => {
+  it('polls only while a session is running', async () => {
+    vi.mocked(apiClient.get).mockReset().mockResolvedValue({ data: [] })
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    )
+    const { result } = renderHook(() => useGameSessions(), { wrapper })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    const interval = (client.getQueryCache().find({ queryKey: ['game-sessions'] })!.options as { refetchInterval: unknown }).refetchInterval as (
+      q: unknown,
+    ) => number | false
+    const q = (data: unknown) => ({ state: { data } })
+    expect(interval(q([{ status: 'running' }]))).toBe(3000)
+    expect(interval(q([{ status: 'paused' }]))).toBe(false)
+    expect(interval(q(undefined))).toBe(false)
   })
 })

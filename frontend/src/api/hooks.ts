@@ -12,6 +12,8 @@ import type {
   PromptStatus,
   PromptSubmission,
   PromptVersion,
+  SessionBid,
+  SessionSettings,
 } from '../types'
 
 /** The backend's `detail` message when there is one, so admins see what to fix. */
@@ -128,6 +130,7 @@ export function useGameSessions() {
       const { data } = await apiClient.get<GameSession[]>('/game-sessions')
       return data
     },
+    refetchInterval: (query) => (query.state.data?.some((s) => s.status === 'running') ? 3000 : false),
   })
 }
 
@@ -192,9 +195,29 @@ export function useDeletePlayer() {
 }
 
 export function useCreateGameSession() {
-  return useRosterMutation(async (name: string) => {
-    const { data } = await apiClient.post<GameSession>('/game-sessions', { name })
+  return useRosterMutation(async (body: { name: string; settings?: SessionSettings }) => {
+    const { data } = await apiClient.post<GameSession>('/game-sessions', body)
     return data
+  })
+}
+
+export function useUpdateSessionSettings() {
+  return useRosterMutation(async ({ sessionId, settings }: { sessionId: string; settings: SessionSettings }) => {
+    const { data } = await apiClient.patch<GameSession>(`/game-sessions/${sessionId}`, { settings })
+    return data
+  })
+}
+
+export function useSessionBids(sessionId: string | null, lotNumber?: number) {
+  return useQuery({
+    queryKey: ['session-bids', sessionId, lotNumber],
+    enabled: sessionId !== null,
+    queryFn: async () => {
+      const { data } = await apiClient.get<SessionBid[]>(`/game-sessions/${sessionId}/bids`, {
+        params: lotNumber === undefined ? undefined : { lot_number: lotNumber },
+      })
+      return data
+    },
   })
 }
 

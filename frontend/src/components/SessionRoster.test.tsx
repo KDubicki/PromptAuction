@@ -20,10 +20,16 @@ const pending: GameSession = {
   name: 'Evening',
   status: 'pending',
   roster: [
-    { player_ref: 'p1', name: 'Aurelia', current_version: 3, version_id: null, version: null, prompt_text: null },
-    { player_ref: 'p2', name: 'Bram', current_version: null, version_id: null, version: null, prompt_text: null },
+    { player_ref: 'p1', name: 'Aurelia', current_version: 3, version_id: null, version: null, prompt_text: null, budget: null, items: [] },
+    { player_ref: 'p2', name: 'Bram', current_version: null, version_id: null, version: null, prompt_text: null, budget: null, items: [] },
   ],
   start_blockers: [],
+  settings: { budget: 100, lots_count: 5, max_rounds: 10 },
+  required_items: [],
+  lots: [],
+  auction: null,
+  standings: [],
+  pause_reason: null,
   current_round: 0,
   current_iteration: 0,
   started_at: null,
@@ -90,7 +96,7 @@ describe('SessionRoster', () => {
     const started: GameSession = {
       ...pending,
       status: 'running',
-      roster: [{ player_ref: 'p1', name: 'Aurelia', current_version: 3, version_id: 'v', version: 2, prompt_text: 'x' }],
+      roster: [{ player_ref: 'p1', name: 'Aurelia', current_version: 3, version_id: 'v', version: 2, prompt_text: 'x', budget: null, items: [] }],
     }
     render(<SessionRoster session={started} />)
     expect(screen.getByText('Plays v2')).toBeInTheDocument()
