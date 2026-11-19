@@ -58,6 +58,18 @@ class GeminiProvider:
             logger.error("Gemini generate_bids failed: %s", e)
             return []
 
+    async def complete_json(self, system: str, user: str) -> str:
+        response = await self._client.aio.models.generate_content(
+            model=self._model,
+            contents=user,
+            config=types.GenerateContentConfig(
+                system_instruction=system,
+                temperature=self._temperature,
+                response_mime_type="application/json",
+            ),
+        )
+        return response.text or ""
+
     async def health_check(self) -> bool:
         try:
             await self._client.aio.models.get(model=self._model)

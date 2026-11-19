@@ -55,6 +55,18 @@ class OpenAIProvider:
             logger.error("OpenAI generate_bids failed: %s", e)
             return []
 
+    async def complete_json(self, system: str, user: str) -> str:
+        response = await self._client.chat.completions.create(
+            model=self._model,
+            temperature=self._temperature,
+            response_format={"type": "json_object"},
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+        )
+        return response.choices[0].message.content or ""
+
     async def health_check(self) -> bool:
         try:
             await self._client.models.list()

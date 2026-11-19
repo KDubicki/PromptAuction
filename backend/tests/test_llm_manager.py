@@ -103,3 +103,41 @@ async def test_health_check_primary_and_fallback() -> None:
 def test_model_info_none_when_unconfigured() -> None:
     manager = LLMServiceManager()
     assert manager.model_info() is None
+
+
+async def test_complete_json_uses_fallback_on_error_or_empty_text() -> None:
+    manager = LLMServiceManager()
+    primary = MagicMock()
+    fallback = MagicMock()
+    fallback.complete_json = AsyncMock(return_value="fb")
+    manager._primary = primary
+    manager._fallback = fallback
+
+    primary.complete_json = AsyncMock(return_value="ok")
+    assert await manager.complete_json("S", "U") == "ok"
+    fallback.complete_json.assert_not_awaited()
+
+    primary.complete_json = AsyncMock(side_effect=RuntimeError("boom"))
+    assert await manager.complete_json("S", "U") == "fb"
+
+    primary.complete_json = AsyncMock(return_value="  \n")
+    assert await manager.complete_json("S", "U") == "fb"
+    fallback.complete_json.assert_awaited_with("S", "U")
+
+
+async def test_complete_json_without_fallback_raises_or_returns_primary() -> None:
+    manager = LLMServiceManager()
+    primary = MagicMock()
+    manager._primary = primary
+
+    primary.complete_json = AsyncMock(side_effect=RuntimeError("boom"))
+    with pytest.raises(RuntimeError, match="boom"):
+        await manager.complete_json("S", "U")
+
+    primary.complete_json = AsyncMock(return_value="")
+    assert await manager.complete_json("S", "U") == ""
+
+
+async def test_complete_json_without_provider_raises() -> None:
+    with pytest.raises(RuntimeError, match="No LLM provider configured"):
+        await LLMServiceManager().complete_json("S", "U")

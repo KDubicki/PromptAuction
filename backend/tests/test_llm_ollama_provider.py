@@ -107,3 +107,36 @@ def test_model_info() -> None:
     assert info.provider == "ollama"
     assert info.model == "llama3"
 
+
+
+async def test_complete_json_sends_system_and_user_and_returns_text(monkeypatch: pytest.MonkeyPatch) -> None:
+    import json
+
+    provider = OllamaProvider(model="llama3", temperature=0.5)
+    seen: dict = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["url"] = str(request.url)
+        seen["body"] = json.loads(request.content)
+        return httpx.Response(200, json={"message": {"content": '{"a": 1}'}})
+
+    monkeypatch.setattr(httpx, "AsyncClient", _client_factory(handler))
+
+    assert await provider.complete_json("S", "U") == '{"a": 1}'
+
+    assert seen["url"] == "http://localhost:11434/api/chat"
+    assert seen["body"] == {
+        "model": "llama3",
+        "messages": [{"role": "system", "content": "S"}, {"role": "user", "content": "U"}],
+        "format": "json",
+        "stream": False,
+        "options": {"temperature": 0.5},
+    }
+
+
+async def test_complete_json_propagates_api_errors(monkeypatch: pytest.MonkeyPatch) -> None:
+    provider = OllamaProvider(model="llama3", temperature=0.5)
+    monkeypatch.setattr(httpx, "AsyncClient", _client_factory(lambda r: httpx.Response(500, json={})))
+
+    with pytest.raises(httpx.HTTPStatusError):
+        await provider.complete_json("S", "U")
