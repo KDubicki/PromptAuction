@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import random
 from datetime import UTC, datetime
 from typing import Any
 
@@ -8,7 +9,19 @@ from bson.errors import InvalidId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.ids import parse_object_id
-from app.schemas.game import GameSessionOut, GameStatus, RosterEntryOut
+from app.schemas.game import (
+    AuctionOut,
+    BidOut,
+    GameSessionOut,
+    GameStatus,
+    LotOut,
+    OwnedItemOut,
+    RosterEntryOut,
+    SessionSettings,
+    StandingOut,
+)
+from app.services.auction.catalog import generate_lots
+from app.services.auction.rules import compute_standings
 
 SESSION_NOT_FOUND = "Game session not found"
 MIN_PLAYERS = 2
@@ -102,8 +115,11 @@ async def session_to_out(db: AsyncIOMotorDatabase, doc: dict) -> GameSessionOut:
                 version_id=entry.get("version_id"),
                 version=entry.get("version"),
                 prompt_text=entry.get("prompt_text"),
+                budget=entry.get("budget"),
+                items=[OwnedItemOut(**it) for it in entry.get("items") or []],
             )
         )
+    auction = doc.get("auction")
     return GameSessionOut(
         id=str(doc["_id"]),
         name=doc["name"],
@@ -115,6 +131,12 @@ async def session_to_out(db: AsyncIOMotorDatabase, doc: dict) -> GameSessionOut:
         started_at=doc.get("started_at"),
         created_at=doc.get("created_at"),
         updated_at=doc.get("updated_at"),
+        settings=SessionSettings(**(doc.get("settings") or {})),
+        required_items=doc.get("required_items") or [],
+        lots=[LotOut(**lot) for lot in doc.get("lots") or []],
+        auction=AuctionOut(**auction) if auction else None,
+        standings=[StandingOut(**row) for row in doc.get("standings") or []],
+        pause_reason=doc.get("pause_reason"),
     )
 
 
@@ -168,6 +190,7 @@ async def start_session(db: AsyncIOMotorDatabase, session_id: str) -> dict:
     if blockers:
         raise SessionError("; ".join(blockers), 409)
 
+    settings = SessionSettings(**(session.get("settings") or {}))
     pinned: list[dict[str, Any]] = []
     for entry in roster:
         name, version = live[entry["player_ref"]]
@@ -179,12 +202,36 @@ async def start_session(db: AsyncIOMotorDatabase, session_id: str) -> dict:
                 "version_id": str(version["_id"]),
                 "version": version["version"],
                 "prompt_text": version["prompt_text"],
+                "budget": settings.budget,
+                "items": [],
             }
         )
+    seed = random.SystemRandom().randrange(2**31)
+    lots, required_items = generate_lots(settings.lots_count, seed)
     now = datetime.now(UTC)
     result = await db.game_sessions.update_one(
         {"_id": session["_id"], "status": "pending"},
-        {"$set": {"status": "running", "roster": pinned, "started_at": now, "updated_at": now}},
+        {
+            "$set": {
+                "status": "running",
+                "roster": pinned,
+                "started_at": now,
+                "updated_at": now,
+                "settings": settings.model_dump(),
+                "seed": seed,
+                "lots": lots,
+                "required_items": required_items,
+                "auction": {
+                    "lot_number": 1,
+                    "current_round": 1,
+                    "highest_bid": 0,
+                    "leader_ref": None,
+                    "leader_name": None,
+                    "void_rounds": 0,
+                },
+                "standings": compute_standings(pinned),
+            }
+        },
     )
     if result.matched_count == 0:
         await get_session(db, session_id)
@@ -193,21 +240,37 @@ async def start_session(db: AsyncIOMotorDatabase, session_id: str) -> dict:
 
 
 async def update_session(
-    db: AsyncIOMotorDatabase, session_id: str, name: str | None, new_status: GameStatus | None
+    db: AsyncIOMotorDatabase,
+    session_id: str,
+    name: str | None,
+    new_status: GameStatus | None,
+    settings: SessionSettings | None = None,
 ) -> dict:
     session = await get_session(db, session_id)
     updates: dict[str, Any] = {}
+    unset: dict[str, str] = {}
     if name is not None:
         updates["name"] = name
+    if settings is not None:
+        if session["status"] != "pending":
+            raise SessionError("Settings can only be changed before the session starts", 409)
+        updates["settings"] = settings.model_dump()
     if new_status is not None and new_status != session["status"]:
         check_transition(session["status"], new_status)
         updates["status"] = new_status
+        if session["status"] == "paused" and new_status == "running":
+            if session.get("auction"):
+                updates["auction.void_rounds"] = 0
+            unset["pause_reason"] = ""
     if updates:
         updates["updated_at"] = datetime.now(UTC)
         filt: dict[str, Any] = {"_id": session["_id"]}
-        if "status" in updates:
+        if "status" in updates or settings is not None:
             filt["status"] = session["status"]
-        result = await db.game_sessions.update_one(filt, {"$set": updates})
+        change: dict[str, Any] = {"$set": updates}
+        if unset:
+            change["$unset"] = unset
+        result = await db.game_sessions.update_one(filt, change)
         if result.matched_count == 0:
             raise SessionError("Session status changed concurrently, try again", 409)
     return await get_session(db, session_id)
@@ -221,3 +284,13 @@ async def delete_session(db: AsyncIOMotorDatabase, session_id: str) -> None:
     if session["status"] == "running":
         raise SessionError("Pause or complete the session before deleting it", 409)
     await db.game_sessions.delete_one({"_id": oid})
+
+
+async def list_bids(db: AsyncIOMotorDatabase, session_id: str, lot_number: int | None) -> list[BidOut]:
+    session = await get_session(db, session_id)
+    query: dict[str, Any] = {"session_id": str(session["_id"]), "lot_number": {"$exists": True}}
+    if lot_number is not None:
+        query["lot_number"] = lot_number
+    order = [("lot_number", 1), ("round", 1), ("response_ms", 1)]
+    docs = await db.player_bids.find(query).sort(order).to_list(length=None)
+    return [BidOut(**{k: v for k, v in doc.items() if k in BidOut.model_fields}) for doc in docs]

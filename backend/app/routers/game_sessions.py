@@ -7,7 +7,14 @@ from fastapi import APIRouter, HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.db.mongo import mongo_manager
-from app.schemas.game import GameSessionCreate, GameSessionOut, GameSessionUpdate, RosterAdd
+from app.schemas.game import (
+    BidOut,
+    GameSessionCreate,
+    GameSessionOut,
+    GameSessionUpdate,
+    RosterAdd,
+    SessionSettings,
+)
 from app.services import game_sessions as sessions
 from app.services.game_sessions import SessionError
 
@@ -36,6 +43,7 @@ async def create_game_session(payload: GameSessionCreate) -> GameSessionOut:
         "started_at": None,
         "current_round": 0,
         "current_iteration": 0,
+        "settings": (payload.settings or SessionSettings()).model_dump(),
         "created_at": now,
         "updated_at": now,
     }
@@ -64,7 +72,7 @@ async def get_game_session(session_id: str) -> GameSessionOut:
 async def update_game_session(session_id: str, payload: GameSessionUpdate) -> GameSessionOut:
     db = _db()
     try:
-        doc = await sessions.update_session(db, session_id, payload.name, payload.status)
+        doc = await sessions.update_session(db, session_id, payload.name, payload.status, payload.settings)
         return await sessions.session_to_out(db, doc)
     except SessionError as exc:
         raise _http(exc) from exc
@@ -105,5 +113,14 @@ async def start_game_session(session_id: str) -> GameSessionOut:
     try:
         doc = await sessions.start_session(db, session_id)
         return await sessions.session_to_out(db, doc)
+    except SessionError as exc:
+        raise _http(exc) from exc
+
+
+@router.get("/{session_id}/bids", response_model=list[BidOut])
+async def list_session_bids(session_id: str, lot_number: int | None = None) -> list[BidOut]:
+    db = _db()
+    try:
+        return await sessions.list_bids(db, session_id, lot_number)
     except SessionError as exc:
         raise _http(exc) from exc

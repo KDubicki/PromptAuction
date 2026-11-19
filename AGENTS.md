@@ -116,14 +116,15 @@ Frontend dev server: http://localhost:5173
 | GET     | `/api/users`                    | List users                        |
 | GET     | `/api/users/{id}`               | Get user                          |
 | PATCH   | `/api/users/{id}`               | Update user                       |
-| POST    | `/api/game-sessions`            | Create game session               |
+| POST    | `/api/game-sessions`            | Create game session; optional `settings` `{budget 1-1000000 (1000), lots_count 1-500 (12), max_rounds 1-100 (10)}` |
 | GET     | `/api/game-sessions`            | List game sessions                |
 | GET     | `/api/game-sessions/{id}`       | Get game session                  |
-| PATCH   | `/api/game-sessions/{id}`       | Rename / change status (running, paused, completed) |
+| PATCH   | `/api/game-sessions/{id}`       | Rename / change status (running, paused, completed) / edit `settings` (pending only, else 409); resuming from paused resets void rounds |
 | DELETE  | `/api/game-sessions/{id}`       | Delete session (409 while running) |
 | POST    | `/api/game-sessions/{id}/players` | Add player to roster (pending only) |
 | DELETE  | `/api/game-sessions/{id}/players/{player_id}` | Remove player from roster (pending only) |
-| POST    | `/api/game-sessions/{id}/start` | Start session, pinning each player's current prompt version |
+| POST    | `/api/game-sessions/{id}/start` | Start session: pins prompt versions, generates lots, gives each player `budget`, starts lot 1 |
+| GET     | `/api/game-sessions/{id}/bids`  | Auction bids (`?lot_number=`), sorted by lot, round, response time; legacy bids excluded |
 | POST    | `/api/players`                  | Create player + accepted v1       |
 | GET     | `/api/players`                  | List players (by name)            |
 | GET     | `/api/players/{id}`             | Player with all versions          |
