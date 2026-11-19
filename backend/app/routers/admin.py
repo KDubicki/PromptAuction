@@ -13,7 +13,7 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 # ── LLM Provider ──────────────────────────────────────────────────────────────
 
 class LLMProviderSwapRequest(BaseModel):
-    provider: str = Field(..., description="Provider name: openai, anthropic, ollama")
+    provider: str = Field(..., description="Provider name: openai, anthropic, ollama, gemini")
     model: str = Field(..., description="Model name (e.g. gpt-4o, claude-sonnet-4-20250514)")
     api_key: str = Field(default="", description="API key (not needed for ollama)")
     base_url: str = Field(default="", description="Custom base URL")
