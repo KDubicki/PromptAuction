@@ -146,7 +146,7 @@ Frontend dev server: http://localhost:5173
 | `users`         | Legacy user data; not used by the game (players are in `players`) |
 | `players`       | Players (name, email, former names, current version) |
 | `ignored_form_responses` | Form responses of deleted players, skipped on sync |
-| `game_sessions` | Game sessions (status, round, iteration, prompts) |
+| `game_sessions` | Game sessions (status, round, iteration, roster with pinned prompt versions) |
 | `prompts`       | Submitted prompts (player_id, text, status)       |
 | `google_form_source` | The connected Google Form and its sync state |
 | `player_bids`   | Bid history (player_id, item, amount, won)        |
@@ -163,8 +163,12 @@ Frontend dev server: http://localhost:5173
 | `backend/app/routers/users.py`        | Users CRUD                                     |
 | `backend/app/routers/game_sessions.py`| Game sessions CRUD                             |
 | `backend/app/routers/prompts.py`      | Webhook + prompt management                    |
+| `backend/app/routers/players.py`      | Players CRUD and prompt versions               |
 | `backend/app/schemas/`                | Pydantic models (request/response)             |
 | `backend/app/services/game_engine.py` | Async game engine (asyncio task)               |
+| `backend/app/services/players.py`     | Player and prompt-version logic                |
+| `backend/app/services/game_sessions.py` | Session roster, start and pinned versions    |
+| `backend/app/services/migrations.py`  | Startup data migrations                        |
 | `backend/app/services/llm_service.py` | LLM integration placeholder                   |
 | `backend/app/services/google_forms.py`| Pulls prompts from the connected Google Form  |
 

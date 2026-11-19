@@ -10,7 +10,14 @@ interface Props {
   onClose: () => void
 }
 
-function PlayerForm({ player, onClose }: { player: Player | null; onClose: () => void }) {
+interface FormProps {
+  player: Player | null
+  saving: boolean
+  setSaving: (saving: boolean) => void
+  onClose: () => void
+}
+
+function PlayerForm({ player, saving, setSaving, onClose }: FormProps) {
   const create = useCreatePlayer()
   const update = useUpdatePlayer()
   const addVersion = useAddPromptVersion()
@@ -18,10 +25,9 @@ function PlayerForm({ player, onClose }: { player: Player | null; onClose: () =>
   const [email, setEmail] = useState(player?.email ?? '')
   const [prompt, setPrompt] = useState(player?.current_version?.prompt_text ?? '')
   const [error, setError] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState({ name: player?.name ?? '', email: player?.email ?? '' })
 
-  const nextVersion = (player?.current_version?.version ?? 0) + 1
+  const nextVersion = (player?.latest_version ?? 0) + 1
   const trimmedName = name.trim()
   const trimmedEmail = email.trim()
   const trimmedPrompt = prompt.trim()
@@ -112,7 +118,7 @@ function PlayerForm({ player, onClose }: { player: Player | null; onClose: () =>
         </Stack>
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={onClose}>Cancel</Button>
+        <Button disabled={saving} onClick={onClose}>Cancel</Button>
         <Button variant="contained" onClick={submit} disabled={!canSubmit}>
           {player ? 'Save' : 'Add player'}
         </Button>
@@ -122,9 +128,12 @@ function PlayerForm({ player, onClose }: { player: Player | null; onClose: () =>
 }
 
 export function PlayerDialog({ open, player, onClose }: Props) {
+  const [saving, setSaving] = useState(false)
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-      {open && <PlayerForm key={player?.id ?? 'new'} player={player} onClose={onClose} />}
+    <Dialog open={open} onClose={saving ? undefined : onClose} fullWidth maxWidth="sm">
+      {open && (
+        <PlayerForm key={player?.id ?? 'new'} player={player} saving={saving} setSaving={setSaving} onClose={onClose} />
+      )}
     </Dialog>
   )
 }

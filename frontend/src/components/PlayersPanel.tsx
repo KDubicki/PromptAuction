@@ -5,6 +5,7 @@ import { Panel } from './Panel'
 import { PlayerDialog } from './PlayerDialog'
 import { PlayerHistoryDialog } from './PlayerHistoryDialog'
 import { apiErrorMessage, useDeletePlayer, usePlayers } from '../api/hooks'
+import { pluralize } from '../plural'
 import type { Player } from '../types'
 
 type DialogState = { kind: 'closed' } | { kind: 'edit'; player: Player | null }
@@ -22,7 +23,7 @@ export function PlayersPanel() {
   return (
     <Panel
       title="Players"
-      slug={`${players.length} players`}
+      slug={pluralize(players.length, 'player')}
       action={
         <Button variant="contained" size="small" onClick={() => setDialog({ kind: 'edit', player: null })}>
           Add player
@@ -81,13 +82,30 @@ export function PlayersPanel() {
                   )}
                 </Box>
                 <Stack direction="row" sx={{ gap: 1, flexShrink: 0 }}>
-                  <Button size="small" variant="outlined" onClick={() => setDialog({ kind: 'edit', player })}>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    aria-label={`Edit ${player.name}`}
+                    onClick={() => setDialog({ kind: 'edit', player })}
+                  >
                     Edit
                   </Button>
-                  <Button size="small" variant="outlined" onClick={() => setHistoryId(player.id)}>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    aria-label={`History ${player.name}`}
+                    onClick={() => setHistoryId(player.id)}
+                  >
                     History
                   </Button>
-                  <Button size="small" variant="outlined" color="error" onClick={() => confirmDelete(player)}>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    color="error"
+                    aria-label={`Delete ${player.name}`}
+                    disabled={remove.isPending}
+                    onClick={() => confirmDelete(player)}
+                  >
                     Delete
                   </Button>
                 </Stack>

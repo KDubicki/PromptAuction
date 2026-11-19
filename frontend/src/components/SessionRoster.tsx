@@ -4,6 +4,7 @@ import { Alert, Box, Button, Stack, Typography } from '@mui/material'
 import { AddPlayersDialog } from './AddPlayersDialog'
 import { Panel } from './Panel'
 import { apiErrorMessage, useRemoveFromRoster, useStartGameSession } from '../api/hooks'
+import { pluralize } from '../plural'
 import type { GameSession } from '../types'
 
 /** Keyed by session so mutation errors and dialog state never leak between sessions. */
@@ -20,7 +21,7 @@ function SessionRosterBody({ session }: { session: GameSession }) {
   return (
     <Panel
       title={session.name}
-      slug={`${session.roster.length} players`}
+      slug={pluralize(session.roster.length, 'player')}
       action={
         isPending && (
           <Stack direction="row" sx={{ gap: 1 }}>

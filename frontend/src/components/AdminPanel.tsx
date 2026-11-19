@@ -107,7 +107,7 @@ export function AdminPanel() {
           Admin
         </Typography>
         <Typography sx={{ color: 'text.secondary', maxWidth: '60ch' }}>
-          Review pending prompts before the round opens. Accepted prompts become bidding agents.
+          Create a session, add players, and start it. Each player bids with the prompt version they had when the session started.
         </Typography>
       </Stack>
 

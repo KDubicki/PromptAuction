@@ -32,6 +32,7 @@ export interface Player {
   email: string | null
   current_version: PromptVersion | null
   pending_versions: number
+  latest_version: number
   created_at: string | null
 }
 
