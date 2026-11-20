@@ -1,4 +1,4 @@
-import { Card, Stack, Typography } from '@mui/material'
+import { Box, Card, Stack, Typography } from '@mui/material'
 
 import { Figure } from '../Figure'
 import type { GameSession } from '../../types'
@@ -12,10 +12,15 @@ export function WinnerStage({ session }: { session: GameSession }) {
   const winners = session.standings.filter((s) => s.rank === 1)
   const top = winners[0]
   const sold = session.lots.filter((lot) => lot.status === 'sold').length
+  const runnersUp = session.standings.filter((s) => s.rank !== 1).slice(0, 4)
 
   return (
     <Card component="section" aria-labelledby="winner" sx={{ borderColor: 'primary.main' }}>
-      <Stack spacing={{ xs: 3, sm: 4 }} sx={{ px: { xs: 2, sm: 4 }, py: { xs: 3, sm: 5 } }}>
+      <Stack
+        direction={{ xs: 'column', md: 'row' }}
+        sx={{ px: { xs: 2, sm: 4 }, py: { xs: 3, sm: 5 }, gap: { xs: 4, md: 6 }, justifyContent: 'space-between' }}
+      >
+      <Stack spacing={{ xs: 3, sm: 4 }} sx={{ minWidth: 0 }}>
         <Typography variant="overline" data-figure sx={{ color: 'text.secondary' }}>
           Auction closed, {sold} of {session.lots.length} lots sold
         </Typography>
@@ -41,6 +46,26 @@ export function WinnerStage({ session }: { session: GameSession }) {
             <Figure label="Budget left" value={top.budget} suffix="pts" />
           </Stack>
         )}
+      </Stack>
+      {runnersUp.length > 0 && (
+        <Box component="ol" aria-label="Runners-up" sx={{ listStyle: 'none', m: 0, p: 0, alignSelf: { md: 'flex-end' }, minWidth: { md: 260 }, display: 'grid', gap: 1 }}>
+          {runnersUp.map((s) => (
+            <Box
+              component="li"
+              key={s.player_ref}
+              sx={{ display: 'grid', gridTemplateColumns: '28px 1fr auto', gap: 1.5, alignItems: 'baseline', py: 1, borderBottom: 1, borderColor: 'divider' }}
+            >
+              <Typography variant="caption" data-figure sx={{ color: 'text.secondary' }}>
+                {s.rank}
+              </Typography>
+              <Typography sx={{ fontWeight: 600 }}>{s.name}</Typography>
+              <Typography variant="caption" data-figure sx={{ color: 'text.secondary' }}>
+                {s.unique_required} items, q {s.quality}
+              </Typography>
+            </Box>
+          ))}
+        </Box>
+      )}
       </Stack>
     </Card>
   )

@@ -47,6 +47,8 @@ frontend/src/
 ├── router.tsx                  # Route table (createBrowserRouter)
 ├── index.css                   # Font imports + reset
 ├── types.ts                    # Shared TypeScript types
+├── liveGame.ts                 # Session picking, call descriptions for the live view
+├── replay.ts                   # Round states, roster at a lot, agent diary for replays
 ├── api/
 │   ├── client.ts               # Axios instance configuration
 │   └── hooks.ts                # React Query hooks
@@ -61,9 +63,10 @@ frontend/src/
     ├── Panel.tsx                # Shared surface: title, mono slug, action
     ├── Figure.tsx               # Labelled mono figure
     ├── DataTable.tsx            # Table that stacks into cards below `sm`
-    ├── BidLadder.tsx            # Sealed-bid reveal on a value axis
-    ├── LiveIndicator.tsx        # Engine heartbeat
-    ├── ActionArena.tsx          # The rostrum: lot, hammer price, BidLadder, round progress
+    ├── LiveIndicator.tsx        # Engine heartbeat (live while any session runs)
+    ├── live/                    # Live game page: Rostrum (live lot + sold stamp), ReplayStage (round chart + playback),
+    │                            #   LotStrip (lot navigator), AgentSeats (follow an agent), AgentDiary (one agent's calls
+    │                            #   lot by lot), RoomTranscript, LotBoard, WinnerStage
     ├── AdminPanel.tsx           # Admin page: sessions, roster, players, review queue, form source
     ├── SessionsPanel.tsx        # Create/list game sessions, pick the selected one
     ├── SessionRoster.tsx        # Roster of the selected session: add/remove players, start
@@ -71,9 +74,7 @@ frontend/src/
     ├── SessionSettingsFields.tsx + sessionSettings.ts # Budget / Items / Rounds-per-item inputs shared by create and pending-session edit
     ├── PlayersPanel.tsx         # Players with prompt versions: create, edit, history, delete
     ├── GoogleFormSourcePanel.tsx # Connect the Google Form players submit through
-    ├── BiddingHistoryTable.tsx  # Bidding history
-    ├── DarkModeToggle.tsx       # Dark/light mode toggle
-    └── LeaderboardInventory.tsx # Ranked agents + lots held
+    └── DarkModeToggle.tsx       # Dark/light mode toggle
 ```
 
 ## Application Architecture
@@ -183,13 +184,10 @@ Flat config (`eslint.config.js`):
 - Order: `SessionsPanel`, `SessionRoster` for the selected session (newest pending, else newest), `PlayersPanel`, review queue, `GoogleFormSourcePanel`
 - Review queue rows: player, version/source meta line, prompt, optional email-mismatch warning, Accept/Reject calling `useUpdatePromptStatus()`
 
-### `ActionArena.tsx`
-- Props: `currentItem`, `liveBids`, `revealed`, `round`, `totalRounds`, `iteration`, `totalIterations`
-- Lot name and hammer price lead; `BidLadder` below; round progress along the bottom edge
-
-### `BidLadder.tsx`
-- Sealed-bid reveal on a value axis. Labels that would overlap move up a lane;
-  overlap is measured in pixels against the plot's real width (`ResizeObserver`)
+### Live game (`pages/GamePage.tsx`)
+- Shows a running session live, or replays a finished one. URL params: `session`, `lot`, `agent`
+- `lot` picks a closed lot to replay (round scrubber + Play through the game); the live lot shows `Rostrum`
+- `agent` follows one agent: its calls stand out and `AgentDiary` lists everything it answered
 
 ## Docker Build
 
@@ -202,8 +200,7 @@ In docker-compose the frontend is accessible on port **5173** (mapping 5173:80).
 ## Pending Work
 
 1. **WebSocket integration** — live updates from game engine (replace polling)
-2. **Real data** — leaderboard, inventories and bidding history are still
-   hardcoded mocks; `BidLadder` needs a real sealed/revealed flag from the engine
+2. **Real data** — the Leaderboard page is still a hardcoded mock
 3. **Authentication** — protect Admin Panel
 4. **SPA fallback** — nginx 404s on deep links (`/admin` etc.); the image needs
    `try_files $uri $uri/ /index.html;`

@@ -1,7 +1,8 @@
-import { Box, Stack, Typography } from '@mui/material'
+import { Box, Button, Stack, Typography } from '@mui/material'
 
 import { TONE_COLOR, describeCall } from '../../liveGame'
-import type { GameSession, OwnedItem, RosterEntry, SessionBid } from '../../types'
+import { initials } from '../../replay'
+import type { OwnedItem, RosterEntry, SessionBid } from '../../types'
 
 function ItemTag({ item }: { item: OwnedItem }) {
   return (
@@ -26,15 +27,42 @@ function ItemTag({ item }: { item: OwnedItem }) {
   )
 }
 
+export function Monogram({ name, active }: { name: string; active: boolean }) {
+  return (
+    <Box
+      aria-hidden
+      sx={{
+        width: 36,
+        height: 36,
+        flexShrink: 0,
+        borderRadius: '50%',
+        display: 'grid',
+        placeItems: 'center',
+        fontFamily: (t) => t.typography.h1.fontFamily,
+        fontWeight: 800,
+        fontSize: '0.8125rem',
+        letterSpacing: '0.02em',
+        bgcolor: active ? 'primary.main' : 'action.selected',
+        color: active ? 'primary.contrastText' : 'text.primary',
+        transition: 'background-color 300ms ease',
+      }}
+    >
+      {initials(name)}
+    </Box>
+  )
+}
+
 interface SeatProps {
   entry: RosterEntry
   startBudget: number
   leading: boolean
+  followed: boolean
   call: SessionBid | undefined
   waiting: boolean
+  onFollow?: () => void
 }
 
-function Seat({ entry, startBudget, leading, call, waiting }: SeatProps) {
+function Seat({ entry, startBudget, leading, followed, call, waiting, onFollow }: SeatProps) {
   const budget = entry.budget ?? startBudget
   const spentPct = startBudget > 0 ? Math.min(100, ((startBudget - budget) / startBudget) * 100) : 0
   const summary = call ? describeCall(call) : null
@@ -47,21 +75,36 @@ function Seat({ entry, startBudget, leading, call, waiting }: SeatProps) {
       sx={{
         p: { xs: 2, sm: 2.5 },
         borderRadius: 3,
-        border: 1,
-        borderColor: leading ? 'primary.main' : 'divider',
+        border: followed ? 2 : 1,
+        borderColor: followed ? 'secondary.main' : leading ? 'primary.main' : 'divider',
         bgcolor: 'background.paper',
         boxShadow: (t) => (leading ? `inset 0 3px 0 ${t.palette.primary.main}` : 'none'),
         transition: 'border-color 300ms ease, box-shadow 300ms ease',
         minWidth: 0,
       }}
     >
-      <Stack direction="row" sx={{ alignItems: 'baseline', justifyContent: 'space-between', gap: 1 }}>
-        <Typography variant="h5" component="h3" sx={{ overflowWrap: 'anywhere' }}>
-          {entry.name}
-        </Typography>
-        <Typography variant="overline" data-figure sx={{ color: leading ? 'primary.main' : 'text.secondary', flexShrink: 0 }}>
-          {leading ? 'Leading' : entry.version ? `Prompt v${entry.version}` : null}
-        </Typography>
+      <Stack direction="row" sx={{ alignItems: 'center', gap: 1.5 }}>
+        <Monogram name={entry.name} active={leading} />
+        <Stack sx={{ minWidth: 0, flex: 1 }}>
+          <Typography variant="h5" component="h3" sx={{ overflowWrap: 'anywhere', lineHeight: 1.2 }}>
+            {entry.name}
+          </Typography>
+          <Typography variant="overline" data-figure sx={{ color: leading ? 'primary.main' : 'text.secondary' }}>
+            {leading ? 'Leading' : entry.version ? `Prompt v${entry.version}` : 'Agent'}
+          </Typography>
+        </Stack>
+        {onFollow && (
+          <Button
+            size="small"
+            variant={followed ? 'contained' : 'outlined'}
+            color="secondary"
+            onClick={onFollow}
+            aria-pressed={followed}
+            aria-label={followed ? `Stop following ${entry.name}` : `Follow ${entry.name}`}
+          >
+            {followed ? 'Following' : 'Follow'}
+          </Button>
+        )}
       </Stack>
 
       <Stack spacing={0.75}>
@@ -127,13 +170,17 @@ function Seat({ entry, startBudget, leading, call, waiting }: SeatProps) {
 }
 
 interface Props {
-  session: GameSession
+  roster: RosterEntry[]
+  startBudget: number
   calls: Map<string, SessionBid>
+  leaderRef: string | null
+  followedRef?: string | null
+  waiting?: boolean
+  onFollow?: (playerRef: string) => void
 }
 
 /** The bidders in the room, each with their budget, their haul and their last word. */
-export function AgentSeats({ session, calls }: Props) {
-  const leaderRef = session.auction?.leader_ref ?? null
+export function AgentSeats({ roster, startBudget, calls, leaderRef, followedRef = null, waiting = false, onFollow }: Props) {
   return (
     <Box
       component="ul"
@@ -147,14 +194,16 @@ export function AgentSeats({ session, calls }: Props) {
         gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
       }}
     >
-      {session.roster.map((entry) => (
+      {roster.map((entry) => (
         <Seat
           key={entry.player_ref}
           entry={entry}
-          startBudget={session.settings.budget}
+          startBudget={startBudget}
           leading={entry.player_ref === leaderRef}
+          followed={entry.player_ref === followedRef}
           call={calls.get(entry.player_ref) ?? calls.get(entry.name)}
-          waiting={session.status === 'running'}
+          waiting={waiting}
+          onFollow={onFollow ? () => onFollow(entry.player_ref) : undefined}
         />
       ))}
     </Box>
