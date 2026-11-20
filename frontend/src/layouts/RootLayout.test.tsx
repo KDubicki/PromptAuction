@@ -4,6 +4,9 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { RootLayout } from './RootLayout'
+import * as hooks from '../api/hooks'
+
+vi.mock('../api/hooks', () => ({ useGameSessions: vi.fn(() => ({ data: undefined })) }))
 
 /** Forces MUI's `useMediaQuery` to report a match, standing in for a wide viewport. */
 function stubWideViewport() {
@@ -49,6 +52,15 @@ describe('RootLayout', () => {
     renderAt('/')
     expect(screen.getByRole('link', { name: 'PromptAuction' })).toBeInTheDocument()
     expect(screen.getByText('Game content')).toBeInTheDocument()
+  })
+
+  it('shows the live dot only while a session runs', () => {
+    renderAt('/')
+    expect(screen.getByText('Idle')).toBeInTheDocument()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.mocked(hooks.useGameSessions).mockReturnValue({ data: [{ status: 'running' }] } as any)
+    renderAt('/')
+    expect(screen.getByText('Live')).toBeInTheDocument()
   })
 
   it('offers a skip link to the main content', () => {

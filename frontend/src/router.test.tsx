@@ -15,6 +15,7 @@ vi.mock('./api/hooks', () => ({
   usePrompts: vi.fn(),
   useUpdatePromptStatus: vi.fn(),
   useGameSessions: vi.fn(() => ({ data: [] })),
+  useSessionBids: vi.fn(() => ({ data: [] })),
   useEntryForm: vi.fn(() => ({ data: null })),
 }))
 
