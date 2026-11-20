@@ -65,13 +65,6 @@ export interface RosterEntry {
   items: OwnedItem[]
 }
 
-export interface PlayerBid {
-  player_id: string
-  item_name: string
-  bid_amount: number
-  won: boolean
-}
-
 export type GameStatus = 'pending' | 'running' | 'paused' | 'completed'
 
 export type LotStatus = 'pending' | 'sold' | 'unsold'
@@ -168,10 +161,4 @@ export interface GoogleFormSyncResult {
 export interface EntryForm {
   title: string
   responder_url: string
-}
-
-export interface LeaderboardEntry {
-  playerId: string
-  winRate: number
-  items: string[]
 }

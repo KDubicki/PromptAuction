@@ -307,6 +307,8 @@ describe('player and roster hooks', () => {
     const { result } = renderHook(() => useSessionBids('s1'), { wrapper: createWrapper() })
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     expect(apiClient.get).toHaveBeenCalledWith('/game-sessions/s1/bids', { params: undefined })
+    const live = renderHook(() => useSessionBids('s1', 2, true), { wrapper: createWrapper() })
+    await waitFor(() => expect(live.result.current.isFetched).toBe(true))
   })
 
   it('useSessionBids filters by lot number', async () => {

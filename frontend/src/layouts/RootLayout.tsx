@@ -18,6 +18,7 @@ import {
   useMediaQuery,
 } from '@mui/material'
 
+import { useGameSessions } from '../api/hooks'
 import { DarkModeToggle } from '../components/DarkModeToggle'
 import { LiveIndicator } from '../components/LiveIndicator'
 import { buildTheme } from '../theme'
@@ -40,6 +41,8 @@ export function RootLayout() {
   const { mode, toggle } = useColorMode()
   const [mobileOpen, setMobileOpen] = useState(false)
   const location = useLocation()
+  const { data: sessions } = useGameSessions()
+  const live = sessions?.some((s) => s.status === 'running') ?? false
 
   const theme = useMemo(() => buildTheme(mode), [mode])
   const permanent = useMediaQuery(theme.breakpoints.up('lg'))
@@ -138,14 +141,7 @@ export function RootLayout() {
             <Box sx={{ flexGrow: 1 }} />
 
             <Stack direction="row" sx={{ alignItems: 'center', gap: { xs: 1, sm: 2 } }}>
-              <LiveIndicator live />
-              <Typography
-                variant="overline"
-                data-figure
-                sx={{ color: 'text.secondary', display: { xs: 'none', sm: 'block' } }}
-              >
-                R2 / 50
-              </Typography>
+              <LiveIndicator live={live} />
               <DarkModeToggle darkMode={mode === 'dark'} onToggle={toggle} />
             </Stack>
           </Toolbar>

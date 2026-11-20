@@ -216,10 +216,11 @@ export function useUpdateSessionStatus() {
   })
 }
 
-export function useSessionBids(sessionId: string | null, lotNumber?: number) {
+export function useSessionBids(sessionId: string | null, lotNumber?: number, live = false) {
   return useQuery({
     queryKey: ['session-bids', sessionId, lotNumber],
     enabled: sessionId !== null,
+    refetchInterval: live ? 3000 : false,
     queryFn: async () => {
       const { data } = await apiClient.get<SessionBid[]>(`/game-sessions/${sessionId}/bids`, {
         params: lotNumber === undefined ? undefined : { lot_number: lotNumber },
