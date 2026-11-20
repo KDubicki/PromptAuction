@@ -498,6 +498,48 @@ async def test_run_loop_survives_a_failing_session(mock_db, monkeypatch: pytest.
     assert (await _reload(mock_db, broken))["status"] == "running"
 
 
+async def test_run_loop_survives_a_failing_tick(
+    mock_db, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    healthy = await _make_session(mock_db)
+    _patch_answers(monkeypatch, (_reply(0), 1.0), (_reply(0), 1.0))
+    fast_config = config_service.get_cached().model_copy(update={"game_engine_sleep_seconds": 0.01})
+    monkeypatch.setattr(game_engine_module, "FALLBACK_SLEEP_SECONDS", 0.01)
+    calls = {"n": 0}
+
+    def flaky_get_cached():
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise RuntimeError("config exploded")
+        return fast_config
+
+    monkeypatch.setattr(config_service, "get_cached", flaky_get_cached)
+
+    engine = GameEngineService()
+    with caplog.at_level(logging.ERROR):
+        engine.start()
+        await asyncio.sleep(0.15)
+        await engine.stop()
+
+    assert "Game engine tick failed" in caplog.text
+    assert (await _reload(mock_db, healthy))["lots"][0]["status"] == "unsold"
+
+
+async def test_ask_logs_exception_type_when_message_is_empty(
+    mock_db, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    session = await _make_session(mock_db)
+
+    async def boom(*, system: str, user: str):
+        raise TimeoutError()
+
+    monkeypatch.setattr(llm_service, "ask_player", boom)
+    with caplog.at_level(logging.WARNING):
+        await GameEngineService()._ask(session, session["roster"][0])
+
+    assert "TimeoutError" in caplog.text
+
+
 async def test_run_loop_sleeps_when_db_not_connected() -> None:
     from app.db.mongo import mongo_manager
 

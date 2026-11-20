@@ -16,7 +16,7 @@ class LLMService:
         try:
             text = await asyncio.wait_for(llm_manager.complete_json(system, user), REQUEST_TIMEOUT_SECONDS)
         except Exception as e:
-            logger.warning("LLM request failed: %s", e or type(e).__name__)
+            logger.warning("LLM request failed: %s", str(e) or type(e).__name__)
             return None, (time.monotonic() - started) * 1000
         return text, (time.monotonic() - started) * 1000
 
