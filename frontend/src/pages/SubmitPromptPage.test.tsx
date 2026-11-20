@@ -35,6 +35,18 @@ describe('SubmitPromptPage', () => {
     ).toBeInTheDocument()
   })
 
+  it('says what the agent can see', async () => {
+    mockPrompts([])
+    const { SubmitPromptPage } = await import('./SubmitPromptPage')
+    render(<SubmitPromptPage />)
+    expect(
+      screen.getByText(
+        "Your prompt drives an agent that bids against every other agent. It sees the lot, the current highest bid, the leader, and every player's budget and items — but never another player's prompt.",
+      ),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/bids blind/)).not.toBeInTheDocument()
+  })
+
   it('shows a placeholder message when VITE_GOOGLE_FORM_URL is not configured', async () => {
     mockPrompts([])
     const { SubmitPromptPage } = await import('./SubmitPromptPage')

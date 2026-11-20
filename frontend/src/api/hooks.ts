@@ -3,6 +3,7 @@ import { isAxiosError } from 'axios'
 
 import { apiClient } from './client'
 import type {
+  GameStatus,
   EntryForm,
   GameSession,
   GoogleFormStatus,
@@ -204,6 +205,13 @@ export function useCreateGameSession() {
 export function useUpdateSessionSettings() {
   return useRosterMutation(async ({ sessionId, settings }: { sessionId: string; settings: SessionSettings }) => {
     const { data } = await apiClient.patch<GameSession>(`/game-sessions/${sessionId}`, { settings })
+    return data
+  })
+}
+
+export function useUpdateSessionStatus() {
+  return useRosterMutation(async ({ sessionId, status }: { sessionId: string; status: GameStatus }) => {
+    const { data } = await apiClient.patch<GameSession>(`/game-sessions/${sessionId}`, { status })
     return data
   })
 }

@@ -11,6 +11,7 @@ vi.mock('../api/hooks', () => ({
   apiErrorMessage: vi.fn((e: unknown) => `msg:${(e as Error).message}`),
   useStartGameSession: vi.fn(),
   useUpdateSessionSettings: vi.fn(),
+  useUpdateSessionStatus: vi.fn(),
   useRemoveFromRoster: vi.fn(),
   useAddToRoster: vi.fn(),
   usePlayers: vi.fn(),
@@ -39,8 +40,11 @@ const pending: GameSession = {
 const start = vi.fn()
 const remove = vi.fn()
 const saveSettings = vi.fn()
+const updateStatus = vi.fn()
 
-function setup(startState = {}, removeState = {}, settingsState = {}) {
+function setup(startState = {}, removeState = {}, settingsState = {}, statusState = {}) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  vi.mocked(hooks.useUpdateSessionStatus).mockReturnValue({ mutate: updateStatus, isPending: false, isError: false, ...statusState } as any)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   vi.mocked(hooks.useUpdateSessionSettings).mockReturnValue({ mutate: saveSettings, isPending: false, isError: false, ...settingsState } as any)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -152,6 +156,76 @@ describe('SessionRoster', () => {
     setup({}, { isPending: true })
     render(<SessionRoster session={pending} />)
     expect(screen.getByRole('button', { name: 'Remove Aurelia' })).toBeDisabled()
+  })
+
+  describe('session controls', () => {
+    const running: GameSession = {
+      ...pending,
+      status: 'running',
+      auction: { lot_number: 1, current_round: 2, highest_bid: 10, leader_ref: 'p1', leader_name: 'Aurelia' },
+      lots: [{ number: 1, item: 'Vase', quality: 3, required: true, status: 'pending' }],
+    } as unknown as GameSession
+
+    it('offers Pause and Complete while running', async () => {
+      render(<SessionRoster session={running} />)
+      expect(screen.queryByRole('button', { name: 'Resume' })).not.toBeInTheDocument()
+      await userEvent.click(screen.getByRole('button', { name: 'Pause' }))
+      expect(updateStatus).toHaveBeenCalledWith({ sessionId: 's1', status: 'paused' })
+    })
+
+    it('offers Resume and Complete while paused', async () => {
+      render(<SessionRoster session={{ ...running, status: 'paused' }} />)
+      expect(screen.queryByRole('button', { name: 'Pause' })).not.toBeInTheDocument()
+      await userEvent.click(screen.getByRole('button', { name: 'Resume' }))
+      expect(updateStatus).toHaveBeenCalledWith({ sessionId: 's1', status: 'running' })
+      expect(screen.getByRole('button', { name: 'Complete' })).toBeInTheDocument()
+    })
+
+    it('completes after confirmation', async () => {
+      const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+      render(<SessionRoster session={running} />)
+      await userEvent.click(screen.getByRole('button', { name: 'Complete' }))
+      expect(confirm).toHaveBeenCalledWith('End this session now? Unsold lots stay unsold.')
+      expect(updateStatus).toHaveBeenCalledWith({ sessionId: 's1', status: 'completed' })
+      confirm.mockRestore()
+    })
+
+    it('does nothing when the confirmation is cancelled', async () => {
+      const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+      render(<SessionRoster session={running} />)
+      await userEvent.click(screen.getByRole('button', { name: 'Complete' }))
+      expect(updateStatus).not.toHaveBeenCalled()
+      confirm.mockRestore()
+    })
+
+    it('has no controls for pending or completed sessions', () => {
+      const { rerender } = render(<SessionRoster session={pending} />)
+      for (const name of ['Pause', 'Resume', 'Complete']) {
+        expect(screen.queryByRole('button', { name })).not.toBeInTheDocument()
+      }
+      rerender(<SessionRoster session={{ ...running, status: 'completed' }} />)
+      for (const name of ['Pause', 'Resume', 'Complete']) {
+        expect(screen.queryByRole('button', { name })).not.toBeInTheDocument()
+      }
+    })
+
+    it('disables the controls while updating and shows an error', () => {
+      setup({}, {}, {}, { isPending: true, isError: true, error: new Error('refused') })
+      render(<SessionRoster session={running} />)
+      expect(screen.getByRole('button', { name: 'Pause' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Complete' })).toBeDisabled()
+      expect(screen.getByText('msg:refused')).toBeInTheDocument()
+    })
+
+    it('shows the auction status only while running or paused', () => {
+      const { rerender } = render(<SessionRoster session={running} />)
+      expect(screen.getByText('Highest bid 10 · Aurelia')).toBeInTheDocument()
+      rerender(<SessionRoster session={{ ...running, status: 'paused' }} />)
+      expect(screen.getByText('Highest bid 10 · Aurelia')).toBeInTheDocument()
+      rerender(<SessionRoster session={{ ...running, status: 'completed' }} />)
+      expect(screen.queryByText('Highest bid 10 · Aurelia')).not.toBeInTheDocument()
+      expect(screen.getByText('Auction finished')).toBeInTheDocument()
+    })
   })
 
   describe('settings while pending', () => {
