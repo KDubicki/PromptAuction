@@ -1,5 +1,6 @@
 import { render, screen, within } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { describe, expect, it, vi } from 'vitest'
 
 import { AgentSeats } from './AgentSeats'
 import { LotBoard } from './LotBoard'
@@ -9,12 +10,14 @@ import { latestCalls } from '../../liveGame'
 import { bid, liveSession, lot } from '../../test/liveFixtures'
 
 describe('AgentSeats', () => {
-  it('seats every agent with budget, haul and last call, and marks the leader', () => {
+  it('seats every agent with budget, haul and last call, and marks the leader', async () => {
     const calls = latestCalls([
       bid({ round: 3, bid: 120, reason: 'Need this one.' }),
       bid({ round: 3, player_ref: 'p2', player_id: 'Kestrel', outcome: 'over_budget', bid: 5000, reason: null }),
     ])
-    render(<AgentSeats session={liveSession()} calls={calls} />)
+    const session = liveSession()
+    const onFollow = vi.fn()
+    render(<AgentSeats roster={session.roster} startBudget={1000} calls={calls} leaderRef="p1" followedRef="p2" onFollow={onFollow} />)
 
     const aurelia = screen.getByRole('listitem', { name: 'Aurelia, leading' })
     expect(within(aurelia).getByText('Leading')).toBeInTheDocument()
@@ -28,19 +31,33 @@ describe('AgentSeats', () => {
     expect(within(kestrel).getByText('Prompt v1')).toBeInTheDocument()
     expect(within(kestrel).getByText('Nothing won yet')).toBeInTheDocument()
     expect(within(kestrel).getByText('Over budget')).toBeInTheDocument()
+    expect(within(kestrel).getByRole('button', { name: 'Stop following Kestrel' })).toHaveTextContent('Following')
+
+    await userEvent.click(within(aurelia).getByRole('button', { name: 'Follow Aurelia' }))
+    expect(onFollow).toHaveBeenCalledWith('p1')
   })
 
   it('says the agents are thinking before the first call, or that nothing was said', () => {
-    const { rerender } = render(<AgentSeats session={liveSession()} calls={new Map()} />)
+    const { roster } = liveSession()
+    const { rerender } = render(<AgentSeats roster={roster} startBudget={1000} calls={new Map()} leaderRef={null} waiting />)
     expect(screen.getAllByText('Thinking about the first call')).toHaveLength(2)
-    rerender(<AgentSeats session={liveSession({ status: 'paused', auction: null })} calls={new Map()} />)
+    expect(screen.queryByRole('button', { name: /Follow/ })).not.toBeInTheDocument()
+    rerender(<AgentSeats roster={roster} startBudget={1000} calls={new Map()} leaderRef={null} />)
     expect(screen.getAllByText('No calls on this lot')).toHaveLength(2)
   })
 
   it('falls back to the starting budget and matches calls by name', () => {
     const session = liveSession()
     session.roster[1] = { ...session.roster[1], budget: null, version: null }
-    render(<AgentSeats session={session} calls={latestCalls([bid({ player_ref: null, player_id: 'Kestrel', outcome: 'pass', bid: 0 })])} />)
+    render(
+      <AgentSeats
+        roster={session.roster}
+        startBudget={1000}
+        leaderRef={null}
+        calls={latestCalls([bid({ player_ref: null, player_id: 'Kestrel', outcome: 'pass', bid: 0 })])}
+      />,
+    )
+    expect(screen.getByRole('listitem', { name: 'Kestrel' })).toHaveTextContent('Agent')
     const kestrel = screen.getByRole('listitem', { name: 'Kestrel' })
     expect(within(kestrel).getByText('1000')).toBeInTheDocument()
     expect(within(kestrel).getByText('Passes')).toBeInTheDocument()
@@ -70,6 +87,18 @@ describe('RoomTranscript', () => {
     expect(screen.getByText('2.5 s')).toBeInTheDocument()
   })
 
+  it('highlights the followed agent, by ref or by name', () => {
+    render(
+      <RoomTranscript
+        lotNumber={1}
+        maxRounds={5}
+        followedKey="p2"
+        bids={[bid(), bid({ player_id: 'Kestrel', player_ref: 'p2', outcome: 'pass' }), bid({ player_id: 'p2', player_ref: null, round: 2 })]}
+      />,
+    )
+    expect(document.querySelectorAll('[data-followed]')).toHaveLength(2)
+  })
+
   it('explains an empty lot', () => {
     render(<RoomTranscript lotNumber={1} maxRounds={5} bids={[]} />)
     expect(screen.getByText('No calls yet. Each round, every agent answers at once.')).toBeInTheDocument()
@@ -97,6 +126,28 @@ describe('LotBoard', () => {
     expect(screen.getByText('On the block').closest('li')).toHaveAttribute('aria-current', 'true')
     expect(screen.getByText('Upcoming')).toBeInTheDocument()
   })
+
+  it('lets the viewer pick a closed or live lot by click or keyboard', async () => {
+    const onSelect = vi.fn()
+    render(
+      <LotBoard
+        currentNumber={2}
+        selectedNumber={1}
+        onSelect={onSelect}
+        lots={[lot({ number: 1, status: 'sold', sold_to_name: 'Kestrel', price: 40 }), lot({ number: 2 }), lot({ number: 3 })]}
+      />,
+    )
+    const rows = screen.getAllByRole('button')
+    expect(rows).toHaveLength(2)
+    expect(rows[0]).toHaveAttribute('aria-selected', 'true')
+    await userEvent.click(rows[0])
+    expect(onSelect).toHaveBeenCalledWith(1)
+    rows[1].focus()
+    await userEvent.keyboard('{Enter}')
+    expect(onSelect).toHaveBeenCalledWith(2)
+    await userEvent.keyboard(' ')
+    expect(onSelect).toHaveBeenCalledTimes(3)
+  })
 })
 
 describe('WinnerStage', () => {
@@ -105,6 +156,7 @@ describe('WinnerStage', () => {
     expect(screen.getByRole('heading', { name: 'Aurelia wins' })).toBeInTheDocument()
     expect(screen.getByText('Auction closed, 1 of 3 lots sold')).toBeInTheDocument()
     expect(screen.getByText('of 2')).toBeInTheDocument()
+    expect(within(screen.getByRole('list', { name: 'Runners-up' })).getByText('Kestrel')).toBeInTheDocument()
   })
 
   it('shares the win on a tie and copes with no standings', () => {

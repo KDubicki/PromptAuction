@@ -1,3 +1,4 @@
+import type React from 'react'
 import { Box, Stack, Typography } from '@mui/material'
 
 import { Panel } from '../Panel'
@@ -6,6 +7,8 @@ import type { Lot } from '../../types'
 interface Props {
   lots: Lot[]
   currentNumber: number | null
+  selectedNumber?: number
+  onSelect?: (lotNumber: number) => void
 }
 
 function Result({ lot, current }: { lot: Lot; current: boolean }) {
@@ -34,19 +37,39 @@ function Result({ lot, current }: { lot: Lot; current: boolean }) {
 }
 
 /** Every lot of the session and how it went. */
-export function LotBoard({ lots, currentNumber }: Props) {
+export function LotBoard({ lots, currentNumber, selectedNumber, onSelect }: Props) {
   const settled = lots.filter((lot) => lot.status !== 'pending').length
   return (
     <Panel title="Lots" slug={`${settled} of ${lots.length} settled`} flush>
       <Box component="ol" sx={{ listStyle: 'none', m: 0, p: 0, maxHeight: 440, overflowY: 'auto' }}>
         {lots.map((lot) => {
           const current = lot.number === currentNumber && lot.status === 'pending'
+          const selectable = onSelect !== undefined && (lot.status !== 'pending' || current)
+          const selected = lot.number === selectedNumber
           return (
             <Box
               component="li"
               key={lot.number}
               aria-current={current ? 'true' : undefined}
+              aria-selected={onSelect ? selected : undefined}
+              role={selectable ? 'button' : undefined}
+              tabIndex={selectable ? 0 : undefined}
+              onClick={selectable ? () => onSelect(lot.number) : undefined}
+              onKeyDown={
+                selectable
+                  ? (e: React.KeyboardEvent) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        onSelect(lot.number)
+                      }
+                    }
+                  : undefined
+              }
               sx={{
+                cursor: selectable ? 'pointer' : 'default',
+                borderLeft: 3,
+                borderLeftColor: selected ? 'text.primary' : 'transparent',
+                '&:hover': selectable ? { bgcolor: 'action.hover' } : undefined,
                 display: 'grid',
                 gridTemplateColumns: '28px 1fr auto',
                 columnGap: 1.5,
