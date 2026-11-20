@@ -5,6 +5,7 @@ import { GoogleFormSourcePanel } from './GoogleFormSourcePanel'
 import { Panel } from './Panel'
 import { PlayersPanel } from './PlayersPanel'
 import { SessionRoster } from './SessionRoster'
+import { SessionStandings } from './SessionStandings'
 import { SessionsPanel } from './SessionsPanel'
 import { useGameSessions, usePrompts, useUpdatePromptStatus } from '../api/hooks'
 import type { GameSession, PromptSubmission } from '../types'
@@ -113,6 +114,7 @@ export function AdminPanel() {
 
       <SessionsPanel selectedId={selected?.id ?? null} onSelect={setChosenId} />
       {selected && <SessionRoster session={selected} />}
+      {selected && selected.standings.length > 0 && <SessionStandings session={selected} />}
 
       <PlayersPanel />
 

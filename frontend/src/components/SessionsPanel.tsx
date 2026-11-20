@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { Alert, Box, Button, ButtonBase, Stack, TextField, Typography } from '@mui/material'
 
 import { Panel } from './Panel'
+import { SessionSettingsFields } from './SessionSettingsFields'
+import { DEFAULT_SETTINGS, parseDraft, toDraft } from './sessionSettings'
 import { apiErrorMessage, useCreateGameSession, useGameSessions } from '../api/hooks'
 import { pluralize } from '../plural'
 import type { GameStatus } from '../types'
@@ -22,16 +24,18 @@ export function SessionsPanel({ selectedId, onSelect }: Props) {
   const { data: sessions = [], isLoading, isError, error } = useGameSessions()
   const create = useCreateGameSession()
   const [name, setName] = useState('')
+  const [draft, setDraft] = useState(toDraft(DEFAULT_SETTINGS))
   const [createError, setCreateError] = useState<string | null>(null)
 
   const trimmed = name.trim()
-  const canCreate = trimmed.length >= 1 && trimmed.length <= 200 && !create.isPending
+  const settings = parseDraft(draft)
+  const canCreate = trimmed.length >= 1 && trimmed.length <= 200 && settings !== null && !create.isPending
 
   const submit = async () => {
-    if (!canCreate) return
+    if (!canCreate || settings === null) return
     setCreateError(null)
     try {
-      const created = await create.mutateAsync({ name: trimmed })
+      const created = await create.mutateAsync({ name: trimmed, settings })
       setName('')
       onSelect(created.id)
     } catch (e) {
@@ -42,14 +46,14 @@ export function SessionsPanel({ selectedId, onSelect }: Props) {
   return (
     <Panel title="Sessions" slug={pluralize(sessions.length, 'session')} flush>
       <Stack
-        direction="row"
         component="form"
         onSubmit={(event) => {
           event.preventDefault()
           void submit()
         }}
-        sx={{ gap: 1, p: 2, alignItems: 'flex-start', borderBottom: 1, borderColor: 'divider' }}
+        sx={{ gap: 1.5, p: 2, borderBottom: 1, borderColor: 'divider' }}
       >
+        <Stack direction="row" sx={{ gap: 1, alignItems: 'flex-start' }}>
         <TextField
           size="small"
           label="Session name"
@@ -62,6 +66,8 @@ export function SessionsPanel({ selectedId, onSelect }: Props) {
         <Button type="submit" variant="outlined" disabled={!canCreate} sx={{ flexShrink: 0, height: 40 }}>
           New session
         </Button>
+        </Stack>
+        <SessionSettingsFields draft={draft} onChange={setDraft} disabled={create.isPending} />
       </Stack>
       {createError && <Alert severity="error" sx={{ m: 2 }}>{createError}</Alert>}
       {isError && <Alert severity="error" sx={{ m: 2 }}>{apiErrorMessage(error)}</Alert>}

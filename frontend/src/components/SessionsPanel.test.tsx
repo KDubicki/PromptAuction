@@ -91,7 +91,7 @@ describe('SessionsPanel', () => {
     expect(create).toBeDisabled()
     await userEvent.type(screen.getByLabelText('Session name'), '  Friday  ')
     await userEvent.click(create)
-    expect(mutateAsync).toHaveBeenCalledWith({ name: 'Friday' })
+    expect(mutateAsync).toHaveBeenCalledWith({ name: 'Friday', settings: { budget: 1000, lots_count: 12, max_rounds: 10 } })
     expect(onSelect).toHaveBeenCalledWith('new')
     expect(screen.getByLabelText('Session name')).toHaveValue('')
   })
@@ -107,11 +107,45 @@ describe('SessionsPanel', () => {
     expect(screen.getByRole('button', { name: 'New session' })).toBeDisabled()
   })
 
+  it('shows the default settings and sends edited ones', async () => {
+    setup([])
+    render(<SessionsPanel selectedId={null} onSelect={onSelect} />)
+    expect(screen.getByLabelText('Budget')).toHaveValue(1000)
+    expect(screen.getByLabelText('Items')).toHaveValue(12)
+    expect(screen.getByLabelText('Rounds per item')).toHaveValue(10)
+    await userEvent.type(screen.getByLabelText('Session name'), 'Tuned')
+    await userEvent.clear(screen.getByLabelText('Budget'))
+    await userEvent.type(screen.getByLabelText('Budget'), '500')
+    await userEvent.clear(screen.getByLabelText('Items'))
+    await userEvent.type(screen.getByLabelText('Items'), '3')
+    await userEvent.clear(screen.getByLabelText('Rounds per item'))
+    await userEvent.type(screen.getByLabelText('Rounds per item'), '4')
+    await userEvent.click(screen.getByRole('button', { name: 'New session' }))
+    expect(mutateAsync).toHaveBeenCalledWith({ name: 'Tuned', settings: { budget: 500, lots_count: 3, max_rounds: 4 } })
+  })
+
+  it.each([
+    ['Budget', '0'],
+    ['Budget', '1000001'],
+    ['Items', '501'],
+    ['Items', '1.5'],
+    ['Rounds per item', '101'],
+    ['Rounds per item', ''],
+  ])('disables New session when %s is %j', async (label, value) => {
+    setup([])
+    render(<SessionsPanel selectedId={null} onSelect={onSelect} />)
+    await userEvent.type(screen.getByLabelText('Session name'), 'Ok')
+    expect(screen.getByRole('button', { name: 'New session' })).toBeEnabled()
+    await userEvent.clear(screen.getByLabelText(label))
+    if (value) await userEvent.type(screen.getByLabelText(label), value)
+    expect(screen.getByRole('button', { name: 'New session' })).toBeDisabled()
+  })
+
   it('creates on Enter', async () => {
     setup([])
     render(<SessionsPanel selectedId={null} onSelect={onSelect} />)
     await userEvent.type(screen.getByLabelText('Session name'), 'Quick{Enter}')
-    expect(mutateAsync).toHaveBeenCalledWith({ name: 'Quick' })
+    expect(mutateAsync).toHaveBeenCalledWith({ name: 'Quick', settings: { budget: 1000, lots_count: 12, max_rounds: 10 } })
   })
 
   it('shows the create error and does not select', async () => {

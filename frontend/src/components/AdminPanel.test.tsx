@@ -19,6 +19,9 @@ vi.mock('./SessionsPanel', () => ({
 vi.mock('./SessionRoster', () => ({
   SessionRoster: ({ session }: { session: { id: string } }) => <div>roster {session.id}</div>,
 }))
+vi.mock('./SessionStandings', () => ({
+  SessionStandings: ({ session }: { session: { id: string } }) => <div>standings {session.id}</div>,
+}))
 vi.mock('./PlayersPanel', () => ({ PlayersPanel: () => null }))
 
 vi.mock('../api/hooks', () => ({
@@ -82,6 +85,20 @@ describe('AdminPanel', () => {
         'Create a session, add players, and start it. Each player bids with the prompt version they had when the session started.',
       ),
     ).toBeInTheDocument()
+  })
+
+  it('renders standings under the roster only once the session has them', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    mockedUsePrompts.mockReturnValue({ data: [] } as any)
+    setSessions([makeSession()])
+    const { unmount } = render(<AdminPanel />)
+    expect(screen.queryByText(/standings s1/)).not.toBeInTheDocument()
+    unmount()
+    setSessions([
+      makeSession({ standings: [{ rank: 1, player_ref: 'a', name: 'A', unique_required: 1, quality: 1, budget: 1 }] }),
+    ])
+    render(<AdminPanel />)
+    expect(screen.getByText('standings s1')).toBeInTheDocument()
   })
 
   it('shows an empty-state message when there are no pending prompts', () => {

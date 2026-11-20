@@ -45,12 +45,18 @@ beforeEach(() => {
 })
 
 describe('PlayerDialog', () => {
+  it('labels the prompt field as the agent prompt with guidance', () => {
+    render(<PlayerDialog open player={null} onClose={onClose} />)
+    expect(screen.getByLabelText('Agent prompt')).toBeInTheDocument()
+    expect(screen.getByText('Give your agent a persona and tell it what to check and how to bid.')).toBeInTheDocument()
+  })
+
   it('creates a player with undefined email when blank', async () => {
     render(<PlayerDialog open player={null} onClose={onClose} />)
     const submit = screen.getByRole('button', { name: 'Add player' })
     expect(submit).toBeDisabled()
     await userEvent.type(screen.getByLabelText('Nick'), ' grace ')
-    await userEvent.type(screen.getByLabelText('Prompt'), 'bid low')
+    await userEvent.type(screen.getByLabelText('Agent prompt'), 'bid low')
     await userEvent.click(submit)
     expect(create).toHaveBeenCalledWith({ name: 'grace', email: undefined, prompt_text: 'bid low' })
     await waitFor(() => expect(onClose).toHaveBeenCalled())
@@ -60,7 +66,7 @@ describe('PlayerDialog', () => {
     render(<PlayerDialog open player={null} onClose={onClose} />)
     await userEvent.type(screen.getByLabelText('Nick'), 'g')
     await userEvent.type(screen.getByLabelText('Email (optional)'), 'g@x.io')
-    await userEvent.type(screen.getByLabelText('Prompt'), 'prompt')
+    await userEvent.type(screen.getByLabelText('Agent prompt'), 'prompt')
     await userEvent.click(screen.getByRole('button', { name: 'Add player' }))
     expect(create).toHaveBeenCalledWith({ name: 'g', email: 'g@x.io', prompt_text: 'prompt' })
   })
@@ -69,9 +75,9 @@ describe('PlayerDialog', () => {
     render(<PlayerDialog open player={player} onClose={onClose} />)
     expect(screen.getByLabelText('Nick')).toHaveValue('ada')
     expect(screen.getByLabelText('Email (optional)')).toHaveValue('ada@x.io')
-    expect(screen.getByText('Saving a changed prompt creates version 3.')).toBeInTheDocument()
-    await userEvent.clear(screen.getByLabelText('Prompt'))
-    await userEvent.type(screen.getByLabelText('Prompt'), 'new prompt')
+    expect(screen.getByText('Give your agent a persona and tell it what to check and how to bid. Saving a changed prompt creates version 3.')).toBeInTheDocument()
+    await userEvent.clear(screen.getByLabelText('Agent prompt'))
+    await userEvent.type(screen.getByLabelText('Agent prompt'), 'new prompt')
     await userEvent.click(screen.getByRole('button', { name: 'Save' }))
     expect(addVersion).toHaveBeenCalledWith({ id: 'p1', prompt_text: 'new prompt' })
     expect(update).not.toHaveBeenCalled()
@@ -104,8 +110,8 @@ describe('PlayerDialog', () => {
 
   it('handles a player without a current version', async () => {
     render(<PlayerDialog open player={{ ...player, email: null, current_version: null, latest_version: 0 }} onClose={onClose} />)
-    expect(screen.getByText('Saving a changed prompt creates version 1.')).toBeInTheDocument()
-    await userEvent.type(screen.getByLabelText('Prompt'), 'first')
+    expect(screen.getByText('Give your agent a persona and tell it what to check and how to bid. Saving a changed prompt creates version 1.')).toBeInTheDocument()
+    await userEvent.type(screen.getByLabelText('Agent prompt'), 'first')
     await userEvent.click(screen.getByRole('button', { name: 'Save' }))
     expect(addVersion).toHaveBeenCalledWith({ id: 'p1', prompt_text: 'first' })
   })
@@ -114,7 +120,7 @@ describe('PlayerDialog', () => {
     create.mockRejectedValue(new Error('nick taken'))
     render(<PlayerDialog open player={null} onClose={onClose} />)
     await userEvent.type(screen.getByLabelText('Nick'), 'g')
-    await userEvent.type(screen.getByLabelText('Prompt'), 'prompt')
+    await userEvent.type(screen.getByLabelText('Agent prompt'), 'prompt')
     await userEvent.click(screen.getByRole('button', { name: 'Add player' }))
     expect(await screen.findByText('msg:nick taken')).toBeInTheDocument()
     expect(onClose).not.toHaveBeenCalled()
@@ -124,8 +130,8 @@ describe('PlayerDialog', () => {
     addVersion.mockRejectedValueOnce(new Error('too long')).mockResolvedValue({})
     render(<PlayerDialog open player={player} onClose={onClose} />)
     await userEvent.type(screen.getByLabelText('Nick'), '2')
-    await userEvent.clear(screen.getByLabelText('Prompt'))
-    await userEvent.type(screen.getByLabelText('Prompt'), 'new prompt')
+    await userEvent.clear(screen.getByLabelText('Agent prompt'))
+    await userEvent.type(screen.getByLabelText('Agent prompt'), 'new prompt')
     await userEvent.click(screen.getByRole('button', { name: 'Save' }))
     expect(
       await screen.findByText('Saved the nick and email, but the new prompt version failed: msg:too long'),
@@ -140,12 +146,12 @@ describe('PlayerDialog', () => {
   it('disables Save for an emptied or too-short prompt in edit mode', async () => {
     render(<PlayerDialog open player={player} onClose={onClose} />)
     const save = screen.getByRole('button', { name: 'Save' })
-    await userEvent.clear(screen.getByLabelText('Prompt'))
+    await userEvent.clear(screen.getByLabelText('Agent prompt'))
     expect(save).toBeDisabled()
-    await userEvent.type(screen.getByLabelText('Prompt'), 'ab')
+    await userEvent.type(screen.getByLabelText('Agent prompt'), 'ab')
     expect(save).toBeDisabled()
     expect(screen.getByText('Prompt must be 3–2000 characters.')).toBeInTheDocument()
-    await userEvent.type(screen.getByLabelText('Prompt'), 'c')
+    await userEvent.type(screen.getByLabelText('Agent prompt'), 'c')
     expect(save).toBeEnabled()
   })
 
@@ -153,9 +159,9 @@ describe('PlayerDialog', () => {
     render(<PlayerDialog open player={null} onClose={onClose} />)
     const submit = screen.getByRole('button', { name: 'Add player' })
     await userEvent.type(screen.getByLabelText('Nick'), 'g')
-    await userEvent.type(screen.getByLabelText('Prompt'), 'ab')
+    await userEvent.type(screen.getByLabelText('Agent prompt'), 'ab')
     expect(submit).toBeDisabled()
-    await userEvent.type(screen.getByLabelText('Prompt'), 'c')
+    await userEvent.type(screen.getByLabelText('Agent prompt'), 'c')
     expect(submit).toBeEnabled()
     await userEvent.type(screen.getByLabelText('Nick'), 'x'.repeat(100))
     expect(submit).toBeDisabled()
@@ -171,7 +177,7 @@ describe('PlayerDialog', () => {
   it('rejects a prompt over 2000 characters', async () => {
     render(<PlayerDialog open player={null} onClose={onClose} />)
     await userEvent.type(screen.getByLabelText('Nick'), 'g')
-    await userEvent.click(screen.getByLabelText('Prompt'))
+    await userEvent.click(screen.getByLabelText('Agent prompt'))
     await userEvent.paste('p'.repeat(2001))
     expect(screen.getByRole('button', { name: 'Add player' })).toBeDisabled()
   })
@@ -184,7 +190,7 @@ describe('PlayerDialog', () => {
 
   it('hints the next version from the latest version, including pending ones', () => {
     render(<PlayerDialog open player={{ ...player, latest_version: 5 }} onClose={onClose} />)
-    expect(screen.getByText('Saving a changed prompt creates version 6.')).toBeInTheDocument()
+    expect(screen.getByText('Give your agent a persona and tell it what to check and how to bid. Saving a changed prompt creates version 6.')).toBeInTheDocument()
   })
 
   it('blocks Cancel while saving', async () => {

@@ -17,6 +17,8 @@ interface FormProps {
   onClose: () => void
 }
 
+const PROMPT_HELPER = 'Give your agent a persona and tell it what to check and how to bid.'
+
 function PlayerForm({ player, saving, setSaving, onClose }: FormProps) {
   const create = useCreatePlayer()
   const update = useUpdatePlayer()
@@ -99,7 +101,7 @@ function PlayerForm({ player, saving, setSaving, onClose }: FormProps) {
             helperText={emailError ?? undefined}
           />
           <TextField
-            label="Prompt"
+            label="Agent prompt"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             multiline
@@ -110,8 +112,8 @@ function PlayerForm({ player, saving, setSaving, onClose }: FormProps) {
               promptError && prompt !== ''
                 ? promptError
                 : player
-                  ? `Saving a changed prompt creates version ${nextVersion}.`
-                  : undefined
+                  ? `${PROMPT_HELPER} Saving a changed prompt creates version ${nextVersion}.`
+                  : PROMPT_HELPER
             }
           />
           {error && <Alert severity="error">{error}</Alert>}

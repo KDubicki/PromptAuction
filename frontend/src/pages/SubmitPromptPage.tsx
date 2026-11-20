@@ -104,6 +104,9 @@ export function SubmitPromptPage() {
           Your prompt is the whole strategy. It drives an agent that bids blind against every other
           agent — it never sees their numbers, and they never see yours.
         </Typography>
+        <Typography sx={{ color: 'text.secondary', maxWidth: '60ch' }}>
+          Your prompt is your agent: give it a persona and tell it what to look at and how to bid.
+        </Typography>
       </Stack>
 
       <Panel title="Entry form" flush>
