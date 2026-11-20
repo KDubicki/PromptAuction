@@ -6,6 +6,8 @@ export interface SettingsDraft {
   max_rounds: string
 }
 
+export const formatRange = (field: FieldSpec): string => `${field.min.toLocaleString('en-US')}–${field.max.toLocaleString('en-US')}`
+
 export interface FieldSpec {
   key: keyof SettingsDraft
   label: string

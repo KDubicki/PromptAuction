@@ -1,6 +1,6 @@
 import { Stack, TextField } from '@mui/material'
 
-import { FIELDS, inRange, type SettingsDraft } from './sessionSettings'
+import { FIELDS, formatRange, inRange, type SettingsDraft } from './sessionSettings'
 
 interface Props {
   draft: SettingsDraft
@@ -20,6 +20,7 @@ export function SessionSettingsFields({ draft, onChange, disabled = false }: Pro
           disabled={disabled}
           value={draft[field.key]}
           error={!inRange(draft[field.key], field)}
+          helperText={inRange(draft[field.key], field) ? undefined : formatRange(field)}
           onChange={(event) => onChange({ ...draft, [field.key]: event.target.value })}
           slotProps={{
             htmlInput: { 'aria-label': field.label, min: field.min, max: field.max, step: 1, 'data-figure': '' },

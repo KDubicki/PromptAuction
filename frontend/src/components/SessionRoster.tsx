@@ -4,7 +4,7 @@ import { Alert, Box, Button, Stack, Typography } from '@mui/material'
 import { AddPlayersDialog } from './AddPlayersDialog'
 import { Panel } from './Panel'
 import { SessionSettingsFields } from './SessionSettingsFields'
-import { parseDraft, toDraft } from './sessionSettings'
+import { parseDraft, toDraft, type SettingsDraft } from './sessionSettings'
 import { apiErrorMessage, useRemoveFromRoster, useStartGameSession, useUpdateSessionSettings } from '../api/hooks'
 import { pluralize } from '../plural'
 import type { GameSession, RosterEntry } from '../types'
@@ -39,24 +39,40 @@ function AuctionStatus({ session }: { session: GameSession }) {
   )
 }
 
-function SettingsEditor({ session }: { session: GameSession }) {
-  const save = useUpdateSessionSettings()
-  const [draft, setDraft] = useState(toDraft(session.settings))
+function SettingsEditor({
+  session,
+  draft,
+  setDraft,
+  dirty,
+  save,
+}: {
+  session: GameSession
+  draft: SettingsDraft
+  setDraft: (draft: SettingsDraft) => void
+  dirty: boolean
+  save: ReturnType<typeof useUpdateSessionSettings>
+}) {
   const parsed = parseDraft(draft)
-  const unchanged = JSON.stringify(draft) === JSON.stringify(toDraft(session.settings))
   return (
     <Stack spacing={1.5} sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
       <SessionSettingsFields draft={draft} onChange={setDraft} disabled={save.isPending} />
-      <Box>
+      <Stack direction="row" sx={{ gap: 1 }}>
         <Button
           size="small"
           variant="outlined"
-          disabled={parsed === null || unchanged || save.isPending}
+          disabled={parsed === null || !dirty || save.isPending}
           onClick={() => parsed && save.mutate({ sessionId: session.id, settings: parsed })}
         >
           Save settings
         </Button>
-      </Box>
+        <Button
+          size="small"
+          disabled={!dirty || save.isPending}
+          onClick={() => setDraft(toDraft(session.settings))}
+        >
+          Discard
+        </Button>
+      </Stack>
       {save.isError && <Alert severity="error">{apiErrorMessage(save.error)}</Alert>}
     </Stack>
   )
@@ -65,8 +81,11 @@ function SettingsEditor({ session }: { session: GameSession }) {
 function SessionRosterBody({ session }: { session: GameSession }) {
   const start = useStartGameSession()
   const remove = useRemoveFromRoster()
+  const saveSettings = useUpdateSessionSettings()
   const [adding, setAdding] = useState(false)
+  const [draft, setDraft] = useState(toDraft(session.settings))
   const isPending = session.status === 'pending'
+  const dirty = JSON.stringify(draft) !== JSON.stringify(toDraft(session.settings))
 
   return (
     <Panel
@@ -81,7 +100,7 @@ function SessionRosterBody({ session }: { session: GameSession }) {
             <Button
               size="small"
               variant="contained"
-              disabled={session.start_blockers.length > 0 || start.isPending}
+              disabled={session.start_blockers.length > 0 || dirty || saveSettings.isPending || start.isPending}
               onClick={() => start.mutate(session.id)}
             >
               Start session
@@ -100,7 +119,10 @@ function SessionRosterBody({ session }: { session: GameSession }) {
           </Box>
         </Alert>
       )}
-      {isPending ? <SettingsEditor session={session} /> : <AuctionStatus session={session} />}
+      {isPending && dirty && (
+        <Alert severity="warning" sx={{ m: 2 }}>Save or discard your settings changes before starting.</Alert>
+      )}
+      {isPending ? <SettingsEditor session={session} draft={draft} setDraft={setDraft} dirty={dirty} save={saveSettings} /> : <AuctionStatus session={session} />}
       {session.status === 'paused' && session.pause_reason && (
         <Alert severity="warning" sx={{ m: 2 }}>{session.pause_reason}</Alert>
       )}
