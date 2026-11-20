@@ -15,6 +15,7 @@ from app.services.llm_service import llm_service
 logger = logging.getLogger(__name__)
 
 VOID_ROUNDS_LIMIT = 3
+FALLBACK_SLEEP_SECONDS = 1.0
 VOID_PAUSE_REASON = "LLM provider failed 3 rounds in a row"
 
 
@@ -37,20 +38,19 @@ class GameEngineService:
         from app.services.config_service import config_service
 
         while True:
-            cfg = config_service.get_cached()
-            sleep = cfg.game_engine_sleep_seconds
+            sleep = FALLBACK_SLEEP_SECONDS
+            try:
+                sleep = config_service.get_cached().game_engine_sleep_seconds
 
-            db = mongo_manager.db
-            if db is None:
-                await asyncio.sleep(sleep)
-                continue
-
-            active_sessions = db.game_sessions.find({"status": "running"})
-            async for session in active_sessions:
-                try:
-                    await self._run_iteration(session)
-                except Exception:
-                    logger.exception("Auction round failed for session %s", session.get("_id"))
+                db = mongo_manager.db
+                if db is not None:
+                    async for session in db.game_sessions.find({"status": "running"}):
+                        try:
+                            await self._run_iteration(session)
+                        except Exception:
+                            logger.exception("Auction round failed for session %s", session.get("_id"))
+            except Exception:
+                logger.exception("Game engine tick failed")
 
             await asyncio.sleep(sleep)
 
@@ -112,7 +112,7 @@ class GameEngineService:
             text, response_ms = await llm_service.ask_player(system=SYSTEM_PROMPT, user=user)
             decision = parse_decision(text) if text else None
         except Exception as e:
-            logger.warning("No answer from %s: %s", entry.get("name"), e or type(e).__name__)
+            logger.warning("No answer from %s: %s", entry.get("name"), str(e) or type(e).__name__)
             decision = None
         if response_ms is None:
             response_ms = (time.monotonic() - started) * 1000

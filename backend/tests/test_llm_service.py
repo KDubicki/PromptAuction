@@ -40,6 +40,7 @@ async def test_ask_player_times_out_to_none(
     assert text is None
     assert 0 <= response_ms < 1000
     assert "LLM request failed" in caplog.text
+    assert "TimeoutError" in caplog.text
 
 
 async def test_ask_player_error_to_none(
