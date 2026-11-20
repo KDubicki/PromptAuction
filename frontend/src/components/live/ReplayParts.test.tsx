@@ -133,7 +133,10 @@ describe('AgentDiary', () => {
 
   it("lists the agent's lots with calls, outcome and summary, and jumps to a lot", async () => {
     const onWatch = vi.fn()
-    render(<AgentDiary name="Aurelia" entries={agentDiary(session, bids, session.roster[0])} selectedLot={2} onWatch={onWatch} />)
+    const onInspect = vi.fn()
+    render(
+      <AgentDiary name="Aurelia" entries={agentDiary(session, bids, session.roster[0])} selectedLot={2} onWatch={onWatch} onInspect={onInspect} />,
+    )
 
     expect(screen.getByRole('heading', { name: 'Aurelia, lot by lot' })).toBeInTheDocument()
     expect(screen.getByText('Bought for 40')).toBeInTheDocument()
@@ -146,15 +149,35 @@ describe('AgentDiary', () => {
     expect(screen.getByTitle('Round 1: Passes')).toHaveTextContent('pass')
     expect(screen.getByTitle('Round 1: No answer')).toHaveTextContent('–')
 
+    await userEvent.click(screen.getByTitle('Round 2: Bids 60, too low'))
+    expect(onInspect).toHaveBeenLastCalledWith(expect.objectContaining({ lot_number: 2, round: 2 }))
+    expect(screen.queryByRole('button', { name: 'Watch lot 2' })).not.toBeInTheDocument()
+
+    const row = screen.getByRole('button', { name: 'Lot 2, Golem Core: Lost to Kestrel at 90' })
+    await userEvent.click(row)
+    expect(row).toHaveAttribute('aria-expanded', 'true')
+    await userEvent.click(screen.getByRole('button', { name: 'Why round 1' }))
+    expect(onInspect).toHaveBeenLastCalledWith(expect.objectContaining({ lot_number: 2, round: 1 }))
     await userEvent.click(screen.getByRole('button', { name: 'Watch lot 2' }))
     expect(onWatch).toHaveBeenCalledWith(2)
+
+    row.focus()
+    await userEvent.keyboard('{Enter}')
+    expect(row).toHaveAttribute('aria-expanded', 'false')
+    await userEvent.keyboard(' ')
+    expect(row).toHaveAttribute('aria-expanded', 'true')
+    screen.getAllByRole('button', { name: 'Why round 1' })[0].focus()
+    await userEvent.keyboard('{Enter}')
+    expect(row).toHaveAttribute('aria-expanded', 'true')
   })
 
   it('handles an agent with no calls and no closed lots', () => {
     const fresh = liveSession({ lots: [lot({ number: 1, status: 'sold', sold_to: 'p2', sold_to_name: 'Kestrel', price: 5 })] })
-    const { rerender } = render(<AgentDiary name="Aurelia" entries={agentDiary(fresh, [], fresh.roster[0])} selectedLot={1} onWatch={vi.fn()} />)
+    const { rerender } = render(
+      <AgentDiary name="Aurelia" entries={agentDiary(fresh, [], fresh.roster[0])} selectedLot={1} onWatch={vi.fn()} onInspect={vi.fn()} />,
+    )
     expect(screen.getByText('No calls')).toBeInTheDocument()
-    rerender(<AgentDiary name="Aurelia" entries={[]} selectedLot={1} onWatch={vi.fn()} />)
+    rerender(<AgentDiary name="Aurelia" entries={[]} selectedLot={1} onWatch={vi.fn()} onInspect={vi.fn()} />)
     expect(screen.getByText('No lots have closed yet.')).toBeInTheDocument()
   })
 })

@@ -108,6 +108,10 @@ export interface SessionBid {
   bid: number | null
   reason: string | null
   response_ms: number | null
+  /** The model's reply as received; recorded for rounds played after this was added. */
+  raw_response?: string | null
+  /** Why there was no usable answer: no reply at all, or a reply without a readable bid. */
+  failure?: 'no_reply' | 'unreadable' | null
   outcome: string | null
   won: boolean
   created_at: string | null

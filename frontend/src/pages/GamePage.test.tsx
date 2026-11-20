@@ -69,7 +69,7 @@ describe('GamePage', () => {
     expect(screen.getByRole('heading', { name: 'Golem Core' })).toBeInTheDocument()
     expect(screen.getByLabelText('Highest bid 120')).toBeInTheDocument()
     expect(screen.getByRole('listitem', { name: 'Aurelia, leading' })).toHaveTextContent('Need it.')
-    expect(screen.getByText('Agents now. Follow one to see everything it answered.')).toBeInTheDocument()
+    expect(screen.getByText(/^Agents now\./)).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Lot 2, round by round' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Standings' })).toBeInTheDocument()
     expect(hooks.useSessionBids).toHaveBeenCalledWith('s1', undefined, true)
@@ -81,7 +81,7 @@ describe('GamePage', () => {
     renderWithProviders(<GamePage />)
     await userEvent.click(screen.getByRole('button', { name: /^Lot 1,/ }))
     expect(screen.getByText('Replay, lot 1 of 3')).toBeInTheDocument()
-    expect(screen.getByText('Agents as they stood when lot 1 came up. Follow one to see everything it answered.')).toBeInTheDocument()
+    expect(screen.getByText(/^Agents as they stood when lot 1 came up\./)).toBeInTheDocument()
     expect(screen.getByRole('listitem', { name: 'Kestrel, leading' })).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: 'Back to live' }))
@@ -128,6 +128,7 @@ describe('GamePage', () => {
     expect(within(diary).getByText('Bought for 100')).toBeInTheDocument()
     expect(within(diary).getByText('Lost to Kestrel at 40')).toBeInTheDocument()
 
+    await userEvent.click(within(diary).getByRole('button', { name: 'Lot 2, Golem Core: Bought for 100' }))
     await userEvent.click(within(diary).getByRole('button', { name: 'Watch lot 2' }))
     expect(screen.getByText('Replay, lot 2 of 3')).toBeInTheDocument()
     expect(screen.getByRole('listitem', { name: 'Aurelia, leading' })).toHaveTextContent('Golem!')
@@ -137,6 +138,26 @@ describe('GamePage', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /^Lot 3,/ }))
     expect(screen.getByRole('status')).toHaveTextContent('Unsold, nobody bid')
+  })
+
+  it("opens the agent's view of a call and steps through its answers", async () => {
+    setup([finished], finishedBids)
+    renderWithProviders(<GamePage />, { route: '/?lot=1' })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Why Aurelia answered this way' }))
+    const drawer = await screen.findByRole('dialog')
+    expect(within(drawer).getByText('Lot 1, round 2, prompt v2')).toBeInTheDocument()
+    expect(within(drawer).getByText('Passed while already leading at 10.')).toBeInTheDocument()
+
+    await userEvent.click(within(drawer).getByRole('button', { name: 'Later answer' }))
+    expect(within(drawer).getByText('Lot 2, round 1, prompt v2')).toBeInTheDocument()
+    expect(screen.getByText('Replay, lot 2 of 3')).toBeInTheDocument()
+
+    await userEvent.click(within(drawer).getByRole('button', { name: 'Close' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Why Aurelia answered this way in round 1' }))
+    expect(within(await screen.findByRole('dialog')).getByText('Lot 2, round 1, prompt v2')).toBeInTheDocument()
   })
 
   it('plays the game back round by round and lot by lot, then stops', () => {

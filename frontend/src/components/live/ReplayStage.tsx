@@ -4,6 +4,7 @@ import PauseIcon from '@mui/icons-material/Pause'
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 
 import { QualityMeter } from './Rostrum'
+import { growUp, useCountUp } from '../../motion'
 import type { RoundState } from '../../replay'
 import type { Lot } from '../../types'
 
@@ -23,7 +24,7 @@ const CHART_HEIGHT = 88
  * Price after each round as a bar; the bars double as the scrubber. Rounds
  * after the one being shown stay flat, so a replay never gives away the ending.
  */
-function RoundChart({ states, round, onRound }: Pick<Props, 'states' | 'round' | 'onRound'>) {
+function RoundChart({ lotNumber, states, round, onRound }: Pick<Props, 'states' | 'round' | 'onRound'> & { lotNumber: number }) {
   const max = Math.max(1, ...states.filter((s) => s.round <= round).map((s) => s.price))
   return (
     <Box
@@ -37,7 +38,7 @@ function RoundChart({ states, round, onRound }: Pick<Props, 'states' | 'round' |
         const height = shown && s.price > 0 ? Math.max(4, (s.price / max) * CHART_HEIGHT) : 2
         return (
           <Box
-            key={s.round}
+            key={`${lotNumber}-${s.round}`}
             component="button"
             type="button"
             onClick={() => onRound(s.round)}
@@ -73,6 +74,7 @@ function RoundChart({ states, round, onRound }: Pick<Props, 'states' | 'round' |
             <Box
               className="bar"
               sx={{
+                ...growUp(Math.min(s.round, 20) * 35),
                 height,
                 borderRadius: '4px 4px 0 0',
                 bgcolor: shown && s.price > 0 ? 'primary.main' : 'text.disabled',
@@ -118,6 +120,7 @@ export function ReplayStage({ lot, lotsCount, states, round, playing, onRound, o
   const total = states.length
   const state = states.find((s) => s.round === round) ?? null
   const price = state?.price ?? 0
+  const shownPrice = useCountUp(price, { durationMs: 450 })
   const atEnd = round >= total
 
   return (
@@ -155,7 +158,6 @@ export function ReplayStage({ lot, lotsCount, states, round, playing, onRound, o
           </Stack>
           <Stack spacing={0.75} sx={{ alignItems: { md: 'flex-end' }, flexShrink: 0 }}>
             <Box
-              key={`${lot.number}-${price}`}
               data-figure
               aria-label={`Highest bid ${price}`}
               sx={{
@@ -165,11 +167,10 @@ export function ReplayStage({ lot, lotsCount, states, round, playing, onRound, o
                 lineHeight: 0.85,
                 letterSpacing: '-0.05em',
                 color: price > 0 ? 'primary.main' : 'text.disabled',
-                animation: 'tick 500ms cubic-bezier(0.2, 0.8, 0.2, 1)',
-                '@keyframes tick': { from: { opacity: 0.3, transform: 'translateY(10px)' }, to: { opacity: 1, transform: 'none' } },
+                transition: 'color 300ms ease',
               }}
             >
-              {price}
+              {shownPrice}
             </Box>
             <Typography sx={{ fontSize: '1.125rem', color: 'text.secondary' }}>
               {state?.leader ? (
@@ -188,7 +189,7 @@ export function ReplayStage({ lot, lotsCount, states, round, playing, onRound, o
 
         {total > 0 ? (
           <Stack spacing={1.5}>
-            <RoundChart states={states} round={round} onRound={onRound} />
+            <RoundChart lotNumber={lot.number} states={states} round={round} onRound={onRound} />
             <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap' }}>
               <Stack direction="row" sx={{ alignItems: 'center', gap: 1.5 }}>
                 <Button

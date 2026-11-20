@@ -147,6 +147,8 @@ async def test_bids_endpoint_filters_and_sorts_new_shape_only(
             "bid": 10,
             "reason": "r",
             "response_ms": ms,
+            "raw_response": '{"bid": 10}',
+            "failure": None,
             "outcome": "valid",
             "won": False,
             "created_at": now + timedelta(seconds=lot),
@@ -167,6 +169,8 @@ async def test_bids_endpoint_filters_and_sorts_new_shape_only(
     got = [(b["lot_number"], b["round"], b["response_ms"]) for b in resp.json()]
     assert got == [(1, 1, 10), (1, 1, 30), (1, 2, 9), (2, 1, 5)]
     assert resp.json()[0]["player_id"] == "A"
+    assert resp.json()[0]["raw_response"] == '{"bid": 10}'
+    assert resp.json()[0]["failure"] is None
 
     resp = await client.get(f"/api/game-sessions/{sid}/bids", params={"lot_number": 2})
     assert [b["lot_number"] for b in resp.json()] == [2]

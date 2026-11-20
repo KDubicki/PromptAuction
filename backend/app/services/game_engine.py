@@ -15,6 +15,7 @@ from app.services.llm_service import llm_service
 logger = logging.getLogger(__name__)
 
 VOID_ROUNDS_LIMIT = 3
+RAW_RESPONSE_MAX_LENGTH = 2000
 FALLBACK_SLEEP_SECONDS = 1.0
 VOID_PAUSE_REASON = "LLM provider failed 3 rounds in a row"
 
@@ -106,6 +107,7 @@ class GameEngineService:
         started = time.monotonic()
         response_ms: float | None = None
         decision: Decision | None = None
+        text: str | None = None
         try:
             state = build_state(session, entry["player_ref"])
             user = build_user_message(entry.get("prompt_text") or "", state)
@@ -116,11 +118,16 @@ class GameEngineService:
             decision = None
         if response_ms is None:
             response_ms = (time.monotonic() - started) * 1000
+        failure = None
+        if decision is None:
+            failure = "unreadable" if text else "no_reply"
         return Answer(
             player_ref=entry.get("player_ref", ""),
             name=entry.get("name", ""),
             decision=decision,
             response_ms=response_ms,
+            raw_response=text[:RAW_RESPONSE_MAX_LENGTH] if text else None,
+            failure=failure,
         )
 
     async def _store_bids(
@@ -144,6 +151,8 @@ class GameEngineService:
                 "bid": answer.decision.bid if answer.decision else None,
                 "reason": answer.decision.reason if answer.decision else None,
                 "response_ms": answer.response_ms,
+                "raw_response": answer.raw_response,
+                "failure": answer.failure,
                 "outcome": result.outcomes[answer.player_ref],
                 "won": bought_this_round and answer.player_ref == buyer_ref,
                 "created_at": now,

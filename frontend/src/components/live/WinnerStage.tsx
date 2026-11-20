@@ -1,6 +1,7 @@
 import { Box, Card, Stack, Typography } from '@mui/material'
 
 import { Figure } from '../Figure'
+import { fadeUp, useCountUp } from '../../motion'
 import type { GameSession } from '../../types'
 
 function names(list: string[]): string {
@@ -13,6 +14,9 @@ export function WinnerStage({ session }: { session: GameSession }) {
   const top = winners[0]
   const sold = session.lots.filter((lot) => lot.status === 'sold').length
   const runnersUp = session.standings.filter((s) => s.rank !== 1).slice(0, 4)
+  const items = useCountUp(top?.unique_required ?? 0, { from: 0, durationMs: 900 })
+  const quality = useCountUp(top?.quality ?? 0, { from: 0, durationMs: 900 })
+  const budget = useCountUp(top?.budget ?? 0, { from: 0, durationMs: 1100 })
 
   return (
     <Card component="section" aria-labelledby="winner" sx={{ borderColor: 'primary.main' }}>
@@ -35,15 +39,20 @@ export function WinnerStage({ session }: { session: GameSession }) {
             fontSize: { xs: '3rem', sm: '4.5rem', md: '6rem' },
             color: 'primary.main',
             overflowWrap: 'anywhere',
+            animation: 'curtain 900ms cubic-bezier(0.7, 0, 0.2, 1) both',
+            '@keyframes curtain': {
+              from: { clipPath: 'inset(0 100% 0 0)', transform: 'translateX(-12px)' },
+              to: { clipPath: 'inset(0 0 0 0)', transform: 'none' },
+            },
           }}
         >
           {top ? `${names(winners.map((w) => w.name))} ${winners.length > 1 ? 'share the win' : 'wins'}` : 'No winner'}
         </Typography>
         {top && (
           <Stack direction="row" sx={{ gap: { xs: 3, sm: 6 }, flexWrap: 'wrap' }}>
-            <Figure label="Required items" value={top.unique_required} suffix={`of ${session.required_items.length}`} emphasis />
-            <Figure label="Quality" value={top.quality} />
-            <Figure label="Budget left" value={top.budget} suffix="pts" />
+            <Figure label="Required items" value={items} suffix={`of ${session.required_items.length}`} emphasis />
+            <Figure label="Quality" value={quality} />
+            <Figure label="Budget left" value={budget} suffix="pts" />
           </Stack>
         )}
       </Stack>
@@ -53,7 +62,7 @@ export function WinnerStage({ session }: { session: GameSession }) {
             <Box
               component="li"
               key={s.player_ref}
-              sx={{ display: 'grid', gridTemplateColumns: '28px 1fr auto', gap: 1.5, alignItems: 'baseline', py: 1, borderBottom: 1, borderColor: 'divider' }}
+              sx={{ ...fadeUp(700 + s.rank * 120), display: 'grid', gridTemplateColumns: '28px 1fr auto', gap: 1.5, alignItems: 'baseline', py: 1, borderBottom: 1, borderColor: 'divider' }}
             >
               <Typography variant="caption" data-figure sx={{ color: 'text.secondary' }}>
                 {s.rank}

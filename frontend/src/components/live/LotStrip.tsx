@@ -3,6 +3,7 @@ import { Box, Button, Stack, Typography } from '@mui/material'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 
+import { growUp } from '../../motion'
 import { initials } from '../../replay'
 import type { Lot } from '../../types'
 
@@ -145,6 +146,7 @@ export function LotStrip({ lots, selected, liveNumber, followedRef, onSelect, on
                   right: 0,
                   bottom: 0,
                   height: `${fill}%`,
+                  ...growUp(Math.min(lot.number, 40) * 25),
                   bgcolor: 'primary.main',
                   opacity: isSelected ? 0.5 : 0.3,
                   transition: 'height 500ms ease',

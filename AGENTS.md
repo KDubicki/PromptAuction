@@ -124,7 +124,7 @@ Frontend dev server: http://localhost:5173
 | POST    | `/api/game-sessions/{id}/players` | Add player to roster (pending only) |
 | DELETE  | `/api/game-sessions/{id}/players/{player_id}` | Remove player from roster (pending only) |
 | POST    | `/api/game-sessions/{id}/start` | Start session: pins prompt versions, generates lots, gives each player `budget`, starts lot 1 |
-| GET     | `/api/game-sessions/{id}/bids`  | Auction bids (`?lot_number=`), sorted by lot, round, response time; legacy bids excluded |
+| GET     | `/api/game-sessions/{id}/bids`  | Auction bids (`?lot_number=`), sorted by lot, round, response time; each with reason, raw model reply and failure kind (`no_reply`/`unreadable`); legacy bids excluded |
 | POST    | `/api/players`                  | Create player + accepted v1       |
 | GET     | `/api/players`                  | List players (by name)            |
 | GET     | `/api/players/{id}`             | Player with all versions          |

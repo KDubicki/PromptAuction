@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Box, Card, Stack, Typography } from '@mui/material'
 import type { Theme } from '@mui/material/styles'
 
+import { useCountUp } from '../../motion'
 import type { GameSession, Lot } from '../../types'
 
 const SOLD_BANNER_MS = 5000
@@ -150,6 +151,7 @@ export function Rostrum({ session, lot }: Props) {
   const closed = useClosedLot(session, lot.number)
   const previous = session.lots.find((l) => l.number === lot.number - 1 && l.status !== 'pending') ?? null
   const price = auction?.highest_bid ?? 0
+  const shownPrice = useCountUp(price)
   const leader = auction?.leader_name ?? null
 
   return (
@@ -198,7 +200,6 @@ export function Rostrum({ session, lot }: Props) {
 
           <Stack spacing={1} sx={{ alignItems: { md: 'flex-end' }, flexShrink: 0 }}>
             <Box
-              key={price}
               data-figure
               aria-label={`Highest bid ${price}`}
               sx={{
@@ -208,14 +209,10 @@ export function Rostrum({ session, lot }: Props) {
                 lineHeight: 0.85,
                 letterSpacing: '-0.05em',
                 color: price > 0 ? 'primary.main' : 'text.disabled',
-                animation: price > 0 ? 'raise 650ms cubic-bezier(0.2, 0.8, 0.2, 1)' : 'none',
-                '@keyframes raise': {
-                  from: { opacity: 0.25, transform: 'translateY(14px)' },
-                  to: { opacity: 1, transform: 'translateY(0)' },
-                },
+                transition: 'color 300ms ease',
               }}
             >
-              {price}
+              {shownPrice}
             </Box>
             <Typography
               sx={{ fontSize: { xs: '1.125rem', sm: '1.25rem' }, color: leader ? 'text.primary' : 'text.secondary' }}

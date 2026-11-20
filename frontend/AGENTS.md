@@ -49,6 +49,8 @@ frontend/src/
 ├── types.ts                    # Shared TypeScript types
 ├── liveGame.ts                 # Session picking, call descriptions for the live view
 ├── replay.ts                   # Round states, roster at a lot, agent diary for replays
+├── agentView.ts                # Rebuilds the exact state/message an agent got (mirrors backend build_state)
+├── motion.ts                   # Shared keyframes and useCountUp (respects reduced motion)
 ├── api/
 │   ├── client.ts               # Axios instance configuration
 │   └── hooks.ts                # React Query hooks
@@ -66,7 +68,8 @@ frontend/src/
     ├── LiveIndicator.tsx        # Engine heartbeat (live while any session runs)
     ├── live/                    # Live game page: Rostrum (live lot + sold stamp), ReplayStage (round chart + playback),
     │                            #   LotStrip (lot navigator), AgentSeats (follow an agent), AgentDiary (one agent's calls
-    │                            #   lot by lot), RoomTranscript, LotBoard, WinnerStage
+    │                            #   lot by lot), AgentInspector (what an agent saw and why a call counted),
+    │                            #   RoomTranscript, LotBoard, WinnerStage
     ├── AdminPanel.tsx           # Admin page: sessions, roster, players, review queue, form source
     ├── SessionsPanel.tsx        # Create/list game sessions, pick the selected one
     ├── SessionRoster.tsx        # Roster of the selected session: add/remove players, start

@@ -392,7 +392,24 @@ async def test_empty_or_garbage_reply_is_no_answer(mock_db, monkeypatch: pytest.
 
     bids = await _bids(mock_db)
     assert [b["outcome"] for b in bids] == ["no_answer", "no_answer"]
+    assert [(b["failure"], b["raw_response"]) for b in bids] == [
+        ("no_reply", None),
+        ("unreadable", "not json at all"),
+    ]
     assert (await _reload(mock_db, session))["auction"]["void_rounds"] == 1
+
+
+async def test_reply_text_is_kept_with_the_bid(mock_db, monkeypatch: pytest.MonkeyPatch) -> None:
+    session = await _make_session(mock_db)
+    long_reply = _reply(10, "x" * 80) + " " + "y" * 3000
+    _patch_answers(monkeypatch, (long_reply, 50.0), (None, 30000.0))
+
+    await GameEngineService()._run_iteration(session)
+
+    alpha, beta = await _bids(mock_db)
+    assert alpha["raw_response"] == long_reply[: game_engine_module.RAW_RESPONSE_MAX_LENGTH]
+    assert alpha["failure"] is None
+    assert (beta["raw_response"], beta["failure"]) == (None, "no_reply")
 
 
 async def test_failure_for_one_player_only_costs_that_player(
