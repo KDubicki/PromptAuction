@@ -17,7 +17,10 @@ describe('AgentSeats', () => {
     ])
     const session = liveSession()
     const onFollow = vi.fn()
-    render(<AgentSeats roster={session.roster} startBudget={1000} calls={calls} leaderRef="p1" followedRef="p2" onFollow={onFollow} />)
+    const onInspect = vi.fn()
+    render(
+      <AgentSeats roster={session.roster} startBudget={1000} calls={calls} leaderRef="p1" followedRef="p2" onFollow={onFollow} onInspect={onInspect} />,
+    )
 
     const aurelia = screen.getByRole('listitem', { name: 'Aurelia, leading' })
     expect(within(aurelia).getByText('Leading')).toBeInTheDocument()
@@ -35,6 +38,8 @@ describe('AgentSeats', () => {
 
     await userEvent.click(within(aurelia).getByRole('button', { name: 'Follow Aurelia' }))
     expect(onFollow).toHaveBeenCalledWith('p1')
+    await userEvent.click(within(aurelia).getByRole('button', { name: 'Why Aurelia answered this way' }))
+    expect(onInspect).toHaveBeenCalledWith(expect.objectContaining({ player_ref: 'p1', bid: 120 }))
   })
 
   it('says the agents are thinking before the first call, or that nothing was said', () => {
@@ -97,6 +102,19 @@ describe('RoomTranscript', () => {
       />,
     )
     expect(document.querySelectorAll('[data-followed]')).toHaveLength(2)
+    expect(screen.queryByRole('button', { name: /^Why/ })).not.toBeInTheDocument()
+  })
+
+  it('opens a call by click or keyboard', async () => {
+    const onInspect = vi.fn()
+    render(<RoomTranscript lotNumber={1} maxRounds={5} bids={[bid()]} onInspect={onInspect} />)
+    const row = screen.getByRole('button', { name: 'Why Aurelia answered this way in round 1' })
+    await userEvent.click(row)
+    row.focus()
+    await userEvent.keyboard('{Enter}')
+    await userEvent.keyboard(' ')
+    await userEvent.keyboard('a')
+    expect(onInspect).toHaveBeenCalledTimes(3)
   })
 
   it('explains an empty lot', () => {

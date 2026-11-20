@@ -1,9 +1,13 @@
-import { Box, Button, Stack, Typography } from '@mui/material'
+import type React from 'react'
+import { useState } from 'react'
+import { Box, Button, Collapse, Stack, Typography } from '@mui/material'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 
 import { Figure } from '../Figure'
 import { Panel } from '../Panel'
 import { Monogram } from './AgentSeats'
 import { TONE_COLOR, describeCall, formatSeconds } from '../../liveGame'
+import { fadeUp } from '../../motion'
 import { pluralize } from '../../plural'
 import { summarizeDiary, type DiaryEntry } from '../../replay'
 import type { SessionBid } from '../../types'
@@ -13,18 +17,29 @@ interface Props {
   entries: DiaryEntry[]
   selectedLot: number
   onWatch: (lotNumber: number) => void
+  onInspect: (call: SessionBid) => void
 }
 
-function CallChip({ call }: { call: SessionBid }) {
+function CallChip({ call, onInspect }: { call: SessionBid; onInspect: (call: SessionBid) => void }) {
   const summary = describeCall(call)
   const label =
     call.outcome === 'pass' ? 'pass' : call.outcome === 'no_answer' || (call.bid === null && !call.won) ? '–' : String(call.bid)
   const filled = summary.tone === 'won'
   return (
+    <Box component="li">
     <Box
-      component="li"
+      component="button"
+      type="button"
+      onClick={(e: React.MouseEvent) => {
+        e.stopPropagation()
+        onInspect(call)
+      }}
       title={`Round ${call.round}: ${summary.text}${summary.tag ? `, ${summary.tag.toLowerCase()}` : ''}`}
       sx={{
+        cursor: 'pointer',
+        font: 'inherit',
+        transition: 'transform 150ms ease',
+        '&:hover': { transform: 'translateY(-2px)' },
         typography: 'caption',
         fontWeight: 500,
         px: 0.75,
@@ -38,6 +53,7 @@ function CallChip({ call }: { call: SessionBid }) {
       }}
     >
       {label}
+    </Box>
     </Box>
   )
 }
@@ -58,7 +74,20 @@ function resultText(entry: DiaryEntry): { text: string; color: string } {
   }
 }
 
-function DiaryRow({ entry, selected, onWatch }: { entry: DiaryEntry; selected: boolean; onWatch: () => void }) {
+function DiaryRow({
+  entry,
+  selected,
+  order,
+  onWatch,
+  onInspect,
+}: {
+  entry: DiaryEntry
+  selected: boolean
+  order: number
+  onWatch: () => void
+  onInspect: (call: SessionBid) => void
+}) {
+  const [open, setOpen] = useState(false)
   const { lot, calls } = entry
   const result = resultText(entry)
   const lastReason = [...calls].reverse().find((c) => c.reason)?.reason ?? null
@@ -67,84 +96,110 @@ function DiaryRow({ entry, selected, onWatch }: { entry: DiaryEntry; selected: b
     <Box
       component="li"
       sx={{
+        ...fadeUp(Math.min(order, 12) * 40),
         borderBottom: 1,
         borderColor: 'divider',
         '&:last-of-type': { borderBottom: 0 },
         bgcolor: selected ? 'action.hover' : 'transparent',
       }}
     >
-      <Box component="details">
-        <Box
-          component="summary"
+      <Box
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        aria-label={`Lot ${lot.number}, ${lot.item}: ${result.text}`}
+        onClick={() => setOpen((o) => !o)}
+        onKeyDown={(e: React.KeyboardEvent) => {
+          if (e.target !== e.currentTarget) return
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            setOpen((o) => !o)
+          }
+        }}
+        sx={{
+          cursor: 'pointer',
+          display: 'grid',
+          gridTemplateColumns: { xs: '28px 1fr 24px', md: '28px minmax(150px, 1.1fr) minmax(0, 1.4fr) minmax(130px, auto) 24px' },
+          columnGap: 2,
+          rowGap: 0.75,
+          alignItems: 'center',
+          px: { xs: 2, sm: 2.5 },
+          py: 1.5,
+          '&:hover': { bgcolor: 'action.hover' },
+        }}
+      >
+        <Typography variant="caption" data-figure sx={{ color: 'text.secondary' }}>
+          {lot.number}
+        </Typography>
+        <Box sx={{ minWidth: 0 }}>
+          <Typography variant="body2" sx={{ fontWeight: 600, color: lot.required ? 'text.primary' : 'text.secondary' }}>
+            {lot.item}
+          </Typography>
+          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+            Quality {lot.quality}, {lot.required ? 'required' : 'not required'}
+          </Typography>
+        </Box>
+        <ExpandMoreIcon
+          aria-hidden
           sx={{
-            listStyle: 'none',
-            '&::-webkit-details-marker': { display: 'none' },
-            cursor: 'pointer',
-            display: 'grid',
-            gridTemplateColumns: { xs: '28px 1fr', md: '28px minmax(150px, 1.1fr) minmax(0, 1.4fr) minmax(130px, auto)' },
-            columnGap: 2,
-            rowGap: 0.75,
-            alignItems: 'center',
-            px: { xs: 2, sm: 2.5 },
-            py: 1.5,
-            '&:hover': { bgcolor: 'action.hover' },
+            gridColumn: { xs: 3, md: 5 },
+            gridRow: 1,
+            color: 'text.secondary',
+            transition: 'transform 250ms ease',
+            transform: open ? 'rotate(180deg)' : 'none',
           }}
+        />
+        <Stack
+          component="ol"
+          direction="row"
+          aria-label="Calls by round"
+          sx={{ listStyle: 'none', m: 0, p: 0, gap: 0.5, flexWrap: 'wrap', gridColumn: { xs: '2', md: '3' }, gridRow: { md: 1 } }}
         >
-          <Typography variant="caption" data-figure sx={{ color: 'text.secondary' }}>
-            {lot.number}
-          </Typography>
-          <Box sx={{ minWidth: 0 }}>
-            <Typography variant="body2" sx={{ fontWeight: 600, color: lot.required ? 'text.primary' : 'text.secondary' }}>
-              {lot.item}
-            </Typography>
-            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-              Quality {lot.quality}, {lot.required ? 'required' : 'not required'}
-            </Typography>
-          </Box>
-          <Stack
-            component="ol"
-            direction="row"
-            aria-label="Calls by round"
-            sx={{ listStyle: 'none', m: 0, p: 0, gap: 0.5, flexWrap: 'wrap', gridColumn: { xs: '2', md: 'auto' } }}
-          >
-            {calls.length > 0 ? (
-              calls.map((call) => <CallChip key={call.round} call={call} />)
-            ) : (
-              <Typography component="li" variant="caption" sx={{ color: 'text.disabled' }}>
-                No calls
-              </Typography>
-            )}
-          </Stack>
-          <Typography
-            variant="body2"
-            sx={{ fontWeight: 600, color: result.color, textAlign: { md: 'right' }, gridColumn: { xs: '2', md: 'auto' } }}
-          >
-            {result.text}
-          </Typography>
-          {lastReason && (
-            <Typography
-              variant="body2"
-              sx={{
-                gridColumn: { xs: '2', md: '2 / -1' },
-                fontStyle: 'italic',
-                color: 'text.secondary',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {lastReason}
+          {calls.length > 0 ? (
+            calls.map((call) => <CallChip key={call.round} call={call} onInspect={onInspect} />)
+          ) : (
+            <Typography component="li" variant="caption" sx={{ color: 'text.disabled' }}>
+              No calls
             </Typography>
           )}
-        </Box>
+        </Stack>
+        <Typography
+          variant="body2"
+          sx={{ fontWeight: 600, color: result.color, textAlign: { md: 'right' }, gridColumn: { xs: '2', md: '4' }, gridRow: { md: 1 } }}
+        >
+          {result.text}
+        </Typography>
+        {lastReason && (
+          <Typography
+            variant="body2"
+            sx={{
+              gridColumn: { xs: '2', md: '2 / 5' },
+              fontStyle: 'italic',
+              color: 'text.secondary',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {lastReason}
+          </Typography>
+        )}
+      </Box>
 
+      <Collapse in={open} unmountOnExit>
         <Stack spacing={1} sx={{ px: { xs: 2, sm: 2.5 }, pb: 2, pl: { xs: 2, sm: 'calc(28px + 36px)' } }}>
-          {calls.map((call) => {
+          {calls.map((call, i) => {
             const summary = describeCall(call)
             return (
               <Box
                 key={call.round}
-                sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '72px 170px 1fr auto' }, columnGap: 2, alignItems: 'baseline' }}
+                sx={{
+                  ...fadeUp(i * 50, 4),
+                  display: 'grid',
+                  gridTemplateColumns: { xs: '1fr auto', sm: '72px 170px 1fr auto auto' },
+                  columnGap: 2,
+                  alignItems: 'baseline',
+                }}
               >
                 <Typography variant="caption" data-figure sx={{ color: 'text.secondary' }}>
                   Round {call.round}
@@ -157,12 +212,20 @@ function DiaryRow({ entry, selected, onWatch }: { entry: DiaryEntry; selected: b
                     </Box>
                   )}
                 </Typography>
-                <Typography variant="body2" sx={{ fontStyle: 'italic', color: 'text.secondary' }}>
+                <Typography variant="body2" sx={{ fontStyle: 'italic', color: 'text.secondary', gridColumn: { xs: '1 / -1', sm: 'auto' } }}>
                   {call.reason ?? ''}
                 </Typography>
                 <Typography variant="caption" data-figure sx={{ color: 'text.disabled' }}>
                   {formatSeconds(call.response_ms)}
                 </Typography>
+                <Button
+                  size="small"
+                  onClick={() => onInspect(call)}
+                  aria-label={`Why round ${call.round}`}
+                  sx={{ minHeight: 28, px: 1 }}
+                >
+                  Why?
+                </Button>
               </Box>
             )
           })}
@@ -172,13 +235,13 @@ function DiaryRow({ entry, selected, onWatch }: { entry: DiaryEntry; selected: b
             </Button>
           </Box>
         </Stack>
-      </Box>
+      </Collapse>
     </Box>
   )
 }
 
 /** Everything one agent said during the session, lot by lot. */
-export function AgentDiary({ name, entries, selectedLot, onWatch }: Props) {
+export function AgentDiary({ name, entries, selectedLot, onWatch, onInspect }: Props) {
   const summary = summarizeDiary(entries)
   return (
     <Panel title={`${name}, lot by lot`} slug={pluralize(entries.length, 'lot')} flush>
@@ -199,12 +262,14 @@ export function AgentDiary({ name, entries, selectedLot, onWatch }: Props) {
         <Typography sx={{ color: 'text.secondary', p: 2.5 }}>No lots have closed yet.</Typography>
       ) : (
         <Box component="ol" sx={{ listStyle: 'none', m: 0, p: 0 }}>
-          {entries.map((entry) => (
+          {entries.map((entry, order) => (
             <DiaryRow
               key={entry.lot.number}
               entry={entry}
+              order={order}
               selected={entry.lot.number === selectedLot}
               onWatch={() => onWatch(entry.lot.number)}
+              onInspect={onInspect}
             />
           ))}
         </Box>

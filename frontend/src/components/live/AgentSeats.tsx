@@ -1,6 +1,7 @@
 import { Box, Button, Stack, Typography } from '@mui/material'
 
 import { TONE_COLOR, describeCall } from '../../liveGame'
+import { fadeUp, ripple } from '../../motion'
 import { initials } from '../../replay'
 import type { OwnedItem, RosterEntry, SessionBid } from '../../types'
 
@@ -45,6 +46,7 @@ export function Monogram({ name, active }: { name: string; active: boolean }) {
         bgcolor: active ? 'primary.main' : 'action.selected',
         color: active ? 'primary.contrastText' : 'text.primary',
         transition: 'background-color 300ms ease',
+        ...(active ? ripple('rgba(214, 162, 83, 0.55)') : {}),
       }}
     >
       {initials(name)}
@@ -60,9 +62,10 @@ interface SeatProps {
   call: SessionBid | undefined
   waiting: boolean
   onFollow?: () => void
+  onInspect?: (call: SessionBid) => void
 }
 
-function Seat({ entry, startBudget, leading, followed, call, waiting, onFollow }: SeatProps) {
+function Seat({ entry, startBudget, leading, followed, call, waiting, onFollow, onInspect }: SeatProps) {
   const budget = entry.budget ?? startBudget
   const spentPct = startBudget > 0 ? Math.min(100, ((startBudget - budget) / startBudget) * 100) : 0
   const summary = call ? describeCall(call) : null
@@ -84,7 +87,7 @@ function Seat({ entry, startBudget, leading, followed, call, waiting, onFollow }
       }}
     >
       <Stack direction="row" sx={{ alignItems: 'center', gap: 1.5 }}>
-        <Monogram name={entry.name} active={leading} />
+        <Monogram key={leading ? 'lead' : 'idle'} name={entry.name} active={leading} />
         <Stack sx={{ minWidth: 0, flex: 1 }}>
           <Typography variant="h5" component="h3" sx={{ overflowWrap: 'anywhere', lineHeight: 1.2 }}>
             {entry.name}
@@ -133,7 +136,7 @@ function Seat({ entry, startBudget, leading, followed, call, waiting, onFollow }
 
       <Box sx={{ borderTop: 1, borderColor: 'divider', pt: 1.75, mt: 'auto !important' }}>
         {summary && call ? (
-          <Stack spacing={0.75}>
+          <Stack key={`${call.lot_number}-${call.round}`} spacing={0.75} sx={fadeUp(0, 6)}>
             <Typography sx={{ fontWeight: 600, color: TONE_COLOR[summary.tone] }}>
               {summary.text}
               {summary.tag && (
@@ -158,6 +161,13 @@ function Seat({ entry, startBudget, leading, followed, call, waiting, onFollow }
                 {call.reason}
               </Typography>
             )}
+            {onInspect && (
+              <Box>
+                <Button size="small" onClick={() => onInspect(call)} aria-label={`Why ${entry.name} answered this way`} sx={{ px: 0, minHeight: 28 }}>
+                  Why?
+                </Button>
+              </Box>
+            )}
           </Stack>
         ) : (
           <Typography variant="body2" sx={{ color: 'text.secondary' }}>
@@ -177,10 +187,11 @@ interface Props {
   followedRef?: string | null
   waiting?: boolean
   onFollow?: (playerRef: string) => void
+  onInspect?: (call: SessionBid) => void
 }
 
 /** The bidders in the room, each with their budget, their haul and their last word. */
-export function AgentSeats({ roster, startBudget, calls, leaderRef, followedRef = null, waiting = false, onFollow }: Props) {
+export function AgentSeats({ roster, startBudget, calls, leaderRef, followedRef = null, waiting = false, onFollow, onInspect }: Props) {
   return (
     <Box
       component="ul"
@@ -204,6 +215,7 @@ export function AgentSeats({ roster, startBudget, calls, leaderRef, followedRef 
           call={calls.get(entry.player_ref) ?? calls.get(entry.name)}
           waiting={waiting}
           onFollow={onFollow ? () => onFollow(entry.player_ref) : undefined}
+          onInspect={onInspect}
         />
       ))}
     </Box>

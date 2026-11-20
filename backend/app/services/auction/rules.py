@@ -11,6 +11,8 @@ class Answer:
     name: str
     decision: Decision | None
     response_ms: float
+    raw_response: str | None = None
+    failure: str | None = None
 
 
 @dataclass

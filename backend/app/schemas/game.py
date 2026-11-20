@@ -96,6 +96,8 @@ class BidOut(BaseModel):
     bid: int | None = None
     reason: str | None = None
     response_ms: float | None = None
+    raw_response: str | None = None
+    failure: str | None = None
     outcome: str | None = None
     won: bool = False
     created_at: datetime | None = None

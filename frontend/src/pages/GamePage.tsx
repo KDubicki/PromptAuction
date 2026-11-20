@@ -4,6 +4,7 @@ import { Alert, Box, Button, Card, Grid, MenuItem, Stack, TextField, Typography 
 
 import { useGameSessions, useSessionBids } from '../api/hooks'
 import { AgentDiary } from '../components/live/AgentDiary'
+import { AgentInspector } from '../components/live/AgentInspector'
 import { AgentSeats } from '../components/live/AgentSeats'
 import { LotBoard } from '../components/live/LotBoard'
 import { LotStrip } from '../components/live/LotStrip'
@@ -70,6 +71,7 @@ function Arena({ session, bids, lotParam, agentParam, setParam }: ArenaProps) {
   const key = `${session.id}:${viewNumber}`
   const [scrub, setScrub] = useState<{ key: string; round: number } | null>(null)
   const [playing, setPlaying] = useState(false)
+  const [inspected, setInspected] = useState<SessionBid | null>(null)
   const round = scrub?.key === key ? Math.min(scrub.round, states.length) : states.length
 
   const followed = session.roster.find((entry) => entry.player_ref === agentParam) ?? null
@@ -107,6 +109,16 @@ function Arena({ session, bids, lotParam, agentParam, setParam }: ArenaProps) {
   const watchLot = (n: number) => {
     selectLot(n)
     stageRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+  }
+
+  const inspect = (call: SessionBid) => {
+    setPlaying(false)
+    setInspected(call)
+  }
+
+  const navigateInspector = (call: SessionBid) => {
+    setInspected(call)
+    if (call.lot_number !== viewNumber) setParam('lot', String(call.lot_number))
   }
 
   const togglePlay = () => {
@@ -159,8 +171,8 @@ function Arena({ session, bids, lotParam, agentParam, setParam }: ArenaProps) {
       <Stack spacing={1.5}>
         <Typography variant="body2" sx={{ color: 'text.secondary' }}>
           {isLiveView
-            ? 'Agents now. Follow one to see everything it answered.'
-            : `Agents as they stood when lot ${viewNumber} came up. Follow one to see everything it answered.`}
+            ? 'Agents now. Follow one to see everything it answered, or tap Why? to see what it was looking at.'
+            : `Agents as they stood when lot ${viewNumber} came up. Follow one to see everything it answered, or tap Why? to see what it was looking at.`}
         </Typography>
         <AgentSeats
           roster={seats.roster}
@@ -170,6 +182,7 @@ function Arena({ session, bids, lotParam, agentParam, setParam }: ArenaProps) {
           followedRef={followed?.player_ref ?? null}
           waiting={isLiveView && session.status === 'running'}
           onFollow={(ref) => setParam('agent', ref === followed?.player_ref ? null : ref)}
+          onInspect={inspect}
         />
       </Stack>
 
@@ -179,6 +192,7 @@ function Arena({ session, bids, lotParam, agentParam, setParam }: ArenaProps) {
           entries={agentDiary(session, bids, followed)}
           selectedLot={viewNumber}
           onWatch={watchLot}
+          onInspect={inspect}
         />
       )}
 
@@ -189,6 +203,7 @@ function Arena({ session, bids, lotParam, agentParam, setParam }: ArenaProps) {
             bids={transcriptBids}
             maxRounds={session.settings.max_rounds}
             followedKey={followed?.player_ref ?? null}
+            onInspect={inspect}
           />
         </Grid>
         <Grid size={{ xs: 12, md: 5 }}>
@@ -198,6 +213,14 @@ function Arena({ session, bids, lotParam, agentParam, setParam }: ArenaProps) {
           </Stack>
         </Grid>
       </Grid>
+
+      <AgentInspector
+        session={session}
+        bids={bids}
+        call={inspected}
+        onClose={() => setInspected(null)}
+        onNavigate={navigateInspector}
+      />
     </>
   )
 }

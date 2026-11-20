@@ -1,7 +1,9 @@
+import type React from 'react'
 import { Box, Stack, Typography } from '@mui/material'
 
 import { Panel } from '../Panel'
 import { TONE_COLOR, describeCall, formatSeconds, groupRounds, playerKey } from '../../liveGame'
+import { fadeUp } from '../../motion'
 import { pluralize } from '../../plural'
 import type { SessionBid } from '../../types'
 
@@ -11,16 +13,34 @@ interface Props {
   maxRounds: number
   /** Agent whose calls stand out; matched by player ref or name. */
   followedKey?: string | null
+  onInspect?: (bid: SessionBid) => void
 }
 
-function Call({ bid, followed }: { bid: SessionBid; followed: boolean }) {
+function Call({ bid, followed, order, onInspect }: { bid: SessionBid; followed: boolean; order: number; onInspect?: (bid: SessionBid) => void }) {
   const summary = describeCall(bid)
   const highlighted = summary.tone === 'lead' || summary.tone === 'won'
   return (
     <Box
       component="li"
       data-followed={followed || undefined}
+      role={onInspect ? 'button' : undefined}
+      tabIndex={onInspect ? 0 : undefined}
+      aria-label={onInspect ? `Why ${bid.player_id} answered this way in round ${bid.round}` : undefined}
+      onClick={onInspect ? () => onInspect(bid) : undefined}
+      onKeyDown={
+        onInspect
+          ? (e: React.KeyboardEvent) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                onInspect(bid)
+              }
+            }
+          : undefined
+      }
       sx={{
+        ...fadeUp(order * 70),
+        cursor: onInspect ? 'pointer' : 'default',
+        '&:hover': onInspect ? { bgcolor: 'action.selected' } : undefined,
         bgcolor: followed ? 'action.hover' : 'transparent',
         display: 'grid',
         gridTemplateColumns: { xs: '1fr auto', sm: 'minmax(90px, 140px) minmax(120px, 190px) 1fr auto' },
@@ -56,7 +76,7 @@ function Call({ bid, followed }: { bid: SessionBid; followed: boolean }) {
 }
 
 /** Everything said on this lot, newest round on top. */
-export function RoomTranscript({ lotNumber, bids, maxRounds, followedKey = null }: Props) {
+export function RoomTranscript({ lotNumber, bids, maxRounds, followedKey = null, onInspect }: Props) {
   const rounds = groupRounds(bids)
   return (
     <Panel title={`Lot ${lotNumber}, round by round`} slug={pluralize(bids.length, 'call')} flush>
@@ -77,10 +97,12 @@ export function RoomTranscript({ lotNumber, bids, maxRounds, followedKey = null 
                 {round === maxRounds ? `Round ${round}, final` : `Round ${round}`}
               </Typography>
               <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0, pb: 0.5 }}>
-                {calls.map((bid) => (
+                {calls.map((bid, order) => (
                   <Call
                     key={`${playerKey(bid)}-${bid.round}`}
                     bid={bid}
+                    order={order}
+                    onInspect={onInspect}
                     followed={followedKey !== null && (bid.player_ref === followedKey || bid.player_id === followedKey)}
                   />
                 ))}
