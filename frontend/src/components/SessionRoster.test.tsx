@@ -171,6 +171,44 @@ describe('SessionRoster', () => {
       })
     })
 
+    it('blocks Start while the draft is dirty and Discard re-enables it', async () => {
+      render(<SessionRoster session={pending} />)
+      const startButton = screen.getByRole('button', { name: 'Start session' })
+      expect(startButton).toBeEnabled()
+      expect(screen.queryByText('Save or discard your settings changes before starting.')).not.toBeInTheDocument()
+      await userEvent.clear(screen.getByLabelText('Budget'))
+      await userEvent.type(screen.getByLabelText('Budget'), '250')
+      expect(startButton).toBeDisabled()
+      expect(screen.getByText('Save or discard your settings changes before starting.')).toBeInTheDocument()
+      await userEvent.click(screen.getByRole('button', { name: 'Discard' }))
+      expect(screen.getByLabelText('Budget')).toHaveValue(100)
+      expect(startButton).toBeEnabled()
+    })
+
+    it('blocks Start for an invalid draft too', async () => {
+      render(<SessionRoster session={pending} />)
+      await userEvent.clear(screen.getByLabelText('Items'))
+      expect(screen.getByRole('button', { name: 'Start session' })).toBeDisabled()
+      expect(screen.getByText('1–500')).toBeInTheDocument()
+    })
+
+    it('allows Start once the saved settings come back', async () => {
+      const { rerender } = render(<SessionRoster session={pending} />)
+      await userEvent.clear(screen.getByLabelText('Budget'))
+      await userEvent.type(screen.getByLabelText('Budget'), '250')
+      await userEvent.click(screen.getByRole('button', { name: 'Save settings' }))
+      expect(screen.getByRole('button', { name: 'Start session' })).toBeDisabled()
+      rerender(<SessionRoster session={{ ...pending, settings: { ...pending.settings, budget: 250 } }} />)
+      await userEvent.click(screen.getByRole('button', { name: 'Start session' }))
+      expect(start).toHaveBeenCalledWith('s1')
+    })
+
+    it('disables Start while settings are saving', () => {
+      setup({}, {}, { isPending: true })
+      render(<SessionRoster session={pending} />)
+      expect(screen.getByRole('button', { name: 'Start session' })).toBeDisabled()
+    })
+
     it('blocks saving out-of-range values', async () => {
       render(<SessionRoster session={pending} />)
       await userEvent.clear(screen.getByLabelText('Items'))
