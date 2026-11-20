@@ -3,13 +3,63 @@ import { Alert, Box, Button, Stack, Typography } from '@mui/material'
 
 import { AddPlayersDialog } from './AddPlayersDialog'
 import { Panel } from './Panel'
-import { apiErrorMessage, useRemoveFromRoster, useStartGameSession } from '../api/hooks'
+import { SessionSettingsFields } from './SessionSettingsFields'
+import { parseDraft, toDraft } from './sessionSettings'
+import { apiErrorMessage, useRemoveFromRoster, useStartGameSession, useUpdateSessionSettings } from '../api/hooks'
 import { pluralize } from '../plural'
-import type { GameSession } from '../types'
+import type { GameSession, RosterEntry } from '../types'
 
 /** Keyed by session so mutation errors and dialog state never leak between sessions. */
 export function SessionRoster({ session }: { session: GameSession }) {
   return <SessionRosterBody key={session.id} session={session} />
+}
+
+function requiredItemCount(entry: RosterEntry): number {
+  return new Set(entry.items.filter((owned) => owned.required).map((owned) => owned.item)).size
+}
+
+function AuctionStatus({ session }: { session: GameSession }) {
+  const { auction, settings } = session
+  if (!auction) return null
+  const lot = session.lots.find((l) => l.number === auction.lot_number)
+  return (
+    <Stack spacing={0.5} sx={{ px: { xs: 2, sm: 2.5 }, py: 1.5, borderBottom: 1, borderColor: 'divider' }}>
+      {lot && (
+        <Typography data-figure sx={{ fontWeight: 600 }}>
+          {`Lot ${lot.number} of ${settings.lots_count} · ${lot.item} · quality ${lot.quality} · ${lot.required ? 'required' : 'not required'}`}
+        </Typography>
+      )}
+      <Typography variant="body2" data-figure sx={{ color: 'text.secondary' }}>
+        {`Round ${auction.current_round} of ${settings.max_rounds}`}
+      </Typography>
+      <Typography variant="body2" data-figure sx={{ color: 'text.secondary' }}>
+        {auction.leader_name ? `Highest bid ${auction.highest_bid} · ${auction.leader_name}` : 'No bids yet'}
+      </Typography>
+    </Stack>
+  )
+}
+
+function SettingsEditor({ session }: { session: GameSession }) {
+  const save = useUpdateSessionSettings()
+  const [draft, setDraft] = useState(toDraft(session.settings))
+  const parsed = parseDraft(draft)
+  const unchanged = JSON.stringify(draft) === JSON.stringify(toDraft(session.settings))
+  return (
+    <Stack spacing={1.5} sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
+      <SessionSettingsFields draft={draft} onChange={setDraft} disabled={save.isPending} />
+      <Box>
+        <Button
+          size="small"
+          variant="outlined"
+          disabled={parsed === null || unchanged || save.isPending}
+          onClick={() => parsed && save.mutate({ sessionId: session.id, settings: parsed })}
+        >
+          Save settings
+        </Button>
+      </Box>
+      {save.isError && <Alert severity="error">{apiErrorMessage(save.error)}</Alert>}
+    </Stack>
+  )
 }
 
 function SessionRosterBody({ session }: { session: GameSession }) {
@@ -50,6 +100,10 @@ function SessionRosterBody({ session }: { session: GameSession }) {
           </Box>
         </Alert>
       )}
+      {isPending ? <SettingsEditor session={session} /> : <AuctionStatus session={session} />}
+      {session.status === 'paused' && session.pause_reason && (
+        <Alert severity="warning" sx={{ m: 2 }}>{session.pause_reason}</Alert>
+      )}
       {start.isError && <Alert severity="error" sx={{ m: 2 }}>{apiErrorMessage(start.error)}</Alert>}
       {remove.isError && <Alert severity="error" sx={{ m: 2 }}>{apiErrorMessage(remove.error)}</Alert>}
       {session.roster.length === 0 && (
@@ -87,6 +141,14 @@ function SessionRosterBody({ session }: { session: GameSession }) {
                   </Typography>
                 )}
               </Box>
+              {entry.budget !== null && (
+                <Box sx={{ textAlign: 'right', flexShrink: 0 }}>
+                  <Typography variant="body2" data-figure>{`${entry.budget} pts`}</Typography>
+                  <Typography variant="caption" data-figure sx={{ color: 'text.secondary' }}>
+                    {pluralize(requiredItemCount(entry), 'required item')}
+                  </Typography>
+                </Box>
+              )}
               {isPending && (
                 <Button
                   size="small"

@@ -26,6 +26,15 @@ describe('SubmitPromptPage', () => {
     vi.resetModules()
   })
 
+  it('explains that the prompt is the agent', async () => {
+    mockPrompts([])
+    const { SubmitPromptPage } = await import('./SubmitPromptPage')
+    render(<SubmitPromptPage />)
+    expect(
+      screen.getByText('Your prompt is your agent: give it a persona and tell it what to look at and how to bid.'),
+    ).toBeInTheDocument()
+  })
+
   it('shows a placeholder message when VITE_GOOGLE_FORM_URL is not configured', async () => {
     mockPrompts([])
     const { SubmitPromptPage } = await import('./SubmitPromptPage')

@@ -10,6 +10,7 @@ import type { GameSession } from '../types'
 vi.mock('../api/hooks', () => ({
   apiErrorMessage: vi.fn((e: unknown) => `msg:${(e as Error).message}`),
   useStartGameSession: vi.fn(),
+  useUpdateSessionSettings: vi.fn(),
   useRemoveFromRoster: vi.fn(),
   useAddToRoster: vi.fn(),
   usePlayers: vi.fn(),
@@ -37,8 +38,11 @@ const pending: GameSession = {
 
 const start = vi.fn()
 const remove = vi.fn()
+const saveSettings = vi.fn()
 
-function setup(startState = {}, removeState = {}) {
+function setup(startState = {}, removeState = {}, settingsState = {}) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  vi.mocked(hooks.useUpdateSessionSettings).mockReturnValue({ mutate: saveSettings, isPending: false, isError: false, ...settingsState } as any)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   vi.mocked(hooks.useStartGameSession).mockReturnValue({ mutate: start, isPending: false, isError: false, ...startState } as any)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -148,5 +152,105 @@ describe('SessionRoster', () => {
     setup({}, { isPending: true })
     render(<SessionRoster session={pending} />)
     expect(screen.getByRole('button', { name: 'Remove Aurelia' })).toBeDisabled()
+  })
+
+  describe('settings while pending', () => {
+    it('shows the settings and saves edits', async () => {
+      render(<SessionRoster session={pending} />)
+      expect(screen.getByLabelText('Budget')).toHaveValue(100)
+      expect(screen.getByLabelText('Items')).toHaveValue(5)
+      expect(screen.getByLabelText('Rounds per item')).toHaveValue(10)
+      const save = screen.getByRole('button', { name: 'Save settings' })
+      expect(save).toBeDisabled()
+      await userEvent.clear(screen.getByLabelText('Budget'))
+      await userEvent.type(screen.getByLabelText('Budget'), '250')
+      await userEvent.click(save)
+      expect(saveSettings).toHaveBeenCalledWith({
+        sessionId: 's1',
+        settings: { budget: 250, lots_count: 5, max_rounds: 10 },
+      })
+    })
+
+    it('blocks saving out-of-range values', async () => {
+      render(<SessionRoster session={pending} />)
+      await userEvent.clear(screen.getByLabelText('Items'))
+      await userEvent.type(screen.getByLabelText('Items'), '501')
+      expect(screen.getByRole('button', { name: 'Save settings' })).toBeDisabled()
+    })
+
+    it('disables fields and save while saving, and shows a save error', async () => {
+      setup({}, {}, { isPending: true, isError: true, error: new Error('late') })
+      render(<SessionRoster session={pending} />)
+      expect(screen.getByLabelText('Budget')).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Save settings' })).toBeDisabled()
+      expect(screen.getByText('msg:late')).toBeInTheDocument()
+    })
+  })
+
+  describe('auction status', () => {
+    const lot = { number: 2, item: 'Amber Idol', quality: 7, required: true, status: 'pending' as const, sold_to: null, sold_to_name: null, price: null, sold_in_round: null }
+    const running: GameSession = {
+      ...pending,
+      status: 'running',
+      settings: { budget: 100, lots_count: 5, max_rounds: 10 },
+      lots: [{ ...lot, number: 1, item: 'Old', status: 'sold' }, lot],
+      auction: { lot_number: 2, current_round: 3, highest_bid: 40, leader_ref: 'p1', leader_name: 'Aurelia', void_rounds: 0 },
+      roster: [
+        {
+          player_ref: 'p1', name: 'Aurelia', current_version: 1, version_id: 'v', version: 1, prompt_text: 'x', budget: 60,
+          items: [
+            { item: 'Amber Idol', quality: 7, required: true, lot_number: 1, price: 40 },
+            { item: 'Amber Idol', quality: 5, required: true, lot_number: 3, price: 10 },
+            { item: 'Jade Fan', quality: 4, required: true, lot_number: 4, price: 20 },
+            { item: 'Dull Rock', quality: 1, required: false, lot_number: 5, price: 1 },
+          ],
+        },
+      ],
+    }
+
+    it('shows lot, round and highest bid lines', () => {
+      render(<SessionRoster session={running} />)
+      expect(screen.getByText('Lot 2 of 5 · Amber Idol · quality 7 · required')).toBeInTheDocument()
+      expect(screen.getByText('Round 3 of 10')).toBeInTheDocument()
+      expect(screen.getByText('Highest bid 40 · Aurelia')).toBeInTheDocument()
+      expect(screen.queryByLabelText('Budget')).not.toBeInTheDocument()
+    })
+
+    it('says when a lot is not required and nobody has bid', () => {
+      render(
+        <SessionRoster
+          session={{
+            ...running,
+            lots: [{ ...lot, required: false }],
+            auction: { ...running.auction!, highest_bid: 0, leader_name: null, leader_ref: null },
+          }}
+        />,
+      )
+      expect(screen.getByText('Lot 2 of 5 · Amber Idol · quality 7 · not required')).toBeInTheDocument()
+      expect(screen.getByText('No bids yet')).toBeInTheDocument()
+    })
+
+    it('shows budget and distinct required items on roster rows', () => {
+      render(<SessionRoster session={running} />)
+      expect(screen.getByText('60 pts')).toBeInTheDocument()
+      expect(screen.getByText('2 required items')).toBeInTheDocument()
+    })
+
+    it('uses the singular for one required item', () => {
+      const one = { ...running, roster: [{ ...running.roster[0], items: running.roster[0].items.slice(0, 2) }] }
+      render(<SessionRoster session={one} />)
+      expect(screen.getByText('1 required item')).toBeInTheDocument()
+    })
+
+    it('shows the pause reason in a warning', () => {
+      render(<SessionRoster session={{ ...running, status: 'paused', pause_reason: 'Model unavailable' }} />)
+      expect(screen.getByRole('alert')).toHaveTextContent('Model unavailable')
+    })
+
+    it('omits status lines when there is no auction and no budget', () => {
+      render(<SessionRoster session={{ ...running, status: 'completed', auction: null, roster: [{ ...running.roster[0], budget: null }] }} />)
+      expect(screen.queryByText(/^Lot /)).not.toBeInTheDocument()
+      expect(screen.queryByText(/pts/)).not.toBeInTheDocument()
+    })
   })
 })

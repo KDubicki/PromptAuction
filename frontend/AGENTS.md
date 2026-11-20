@@ -67,6 +67,8 @@ frontend/src/
     ├── AdminPanel.tsx           # Admin page: sessions, roster, players, review queue, form source
     ├── SessionsPanel.tsx        # Create/list game sessions, pick the selected one
     ├── SessionRoster.tsx        # Roster of the selected session: add/remove players, start
+    ├── SessionStandings.tsx     # Standings table (rank, required items, quality, budget) under the roster
+    ├── SessionSettingsFields.tsx + sessionSettings.ts # Budget / Items / Rounds-per-item inputs shared by create and pending-session edit
     ├── PlayersPanel.tsx         # Players with prompt versions: create, edit, history, delete
     ├── GoogleFormSourcePanel.tsx # Connect the Google Form players submit through
     ├── BiddingHistoryTable.tsx  # Bidding history
