@@ -5,7 +5,7 @@ import { AddPlayersDialog } from './AddPlayersDialog'
 import { Panel } from './Panel'
 import { SessionSettingsFields } from './SessionSettingsFields'
 import { parseDraft, toDraft, type SettingsDraft } from './sessionSettings'
-import { apiErrorMessage, useRemoveFromRoster, useStartGameSession, useUpdateSessionSettings } from '../api/hooks'
+import { apiErrorMessage, useRemoveFromRoster, useStartGameSession, useUpdateSessionSettings, useUpdateSessionStatus } from '../api/hooks'
 import { pluralize } from '../plural'
 import type { GameSession, RosterEntry } from '../types'
 
@@ -82,9 +82,11 @@ function SessionRosterBody({ session }: { session: GameSession }) {
   const start = useStartGameSession()
   const remove = useRemoveFromRoster()
   const saveSettings = useUpdateSessionSettings()
+  const updateStatus = useUpdateSessionStatus()
   const [adding, setAdding] = useState(false)
   const [draft, setDraft] = useState(toDraft(session.settings))
   const isPending = session.status === 'pending'
+  const isLive = session.status === 'running' || session.status === 'paused'
   const dirty = JSON.stringify(draft) !== JSON.stringify(toDraft(session.settings))
 
   return (
@@ -92,7 +94,43 @@ function SessionRosterBody({ session }: { session: GameSession }) {
       title={session.name}
       slug={pluralize(session.roster.length, 'player')}
       action={
-        isPending && (
+        isLive ? (
+          <Stack direction="row" sx={{ gap: 1 }}>
+            {session.status === 'running' ? (
+              <Button
+                size="small"
+                variant="outlined"
+                disabled={updateStatus.isPending}
+                onClick={() => updateStatus.mutate({ sessionId: session.id, status: 'paused' })}
+              >
+                Pause
+              </Button>
+            ) : (
+              <Button
+                size="small"
+                variant="contained"
+                disabled={updateStatus.isPending}
+                onClick={() => updateStatus.mutate({ sessionId: session.id, status: 'running' })}
+              >
+                Resume
+              </Button>
+            )}
+            <Button
+              size="small"
+              variant="outlined"
+              color="error"
+              disabled={updateStatus.isPending}
+              onClick={() => {
+                if (window.confirm('End this session now? Unsold lots stay unsold.')) {
+                  updateStatus.mutate({ sessionId: session.id, status: 'completed' })
+                }
+              }}
+            >
+              Complete
+            </Button>
+          </Stack>
+        ) : (
+          isPending && (
           <Stack direction="row" sx={{ gap: 1 }}>
             <Button size="small" variant="outlined" onClick={() => setAdding(true)}>
               Add players
@@ -106,6 +144,7 @@ function SessionRosterBody({ session }: { session: GameSession }) {
               Start session
             </Button>
           </Stack>
+          )
         )
       }
       flush
@@ -122,10 +161,11 @@ function SessionRosterBody({ session }: { session: GameSession }) {
       {isPending && dirty && (
         <Alert severity="warning" sx={{ m: 2 }}>Save or discard your settings changes before starting.</Alert>
       )}
-      {isPending ? <SettingsEditor session={session} draft={draft} setDraft={setDraft} dirty={dirty} save={saveSettings} /> : <AuctionStatus session={session} />}
+      {isPending ? <SettingsEditor session={session} draft={draft} setDraft={setDraft} dirty={dirty} save={saveSettings} /> : isLive ? <AuctionStatus session={session} /> : <Typography sx={{ color: 'text.secondary', px: { xs: 2, sm: 2.5 }, py: 1.5, borderBottom: 1, borderColor: 'divider' }}>Auction finished</Typography>}
       {session.status === 'paused' && session.pause_reason && (
         <Alert severity="warning" sx={{ m: 2 }}>{session.pause_reason}</Alert>
       )}
+      {updateStatus.isError && <Alert severity="error" sx={{ m: 2 }}>{apiErrorMessage(updateStatus.error)}</Alert>}
       {start.isError && <Alert severity="error" sx={{ m: 2 }}>{apiErrorMessage(start.error)}</Alert>}
       {remove.isError && <Alert severity="error" sx={{ m: 2 }}>{apiErrorMessage(remove.error)}</Alert>}
       {session.roster.length === 0 && (

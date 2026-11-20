@@ -25,6 +25,7 @@ import {
   useStartGameSession,
   useUpdatePlayer,
   useUpdateSessionSettings,
+  useUpdateSessionStatus,
   usePrompts,
   useSyncGoogleForm,
   useUpdatePromptStatus,
@@ -293,6 +294,12 @@ describe('player and roster hooks', () => {
     const { result } = renderHook(() => useUpdateSessionSettings(), { wrapper: createWrapper() })
     await result.current.mutateAsync({ sessionId: 's1', settings })
     expect(apiClient.patch).toHaveBeenCalledWith('/game-sessions/s1', { settings })
+  })
+
+  it('useUpdateSessionStatus patches the status', async () => {
+    const { result } = renderHook(() => useUpdateSessionStatus(), { wrapper: createWrapper() })
+    await result.current.mutateAsync({ sessionId: 's1', status: 'paused' })
+    expect(apiClient.patch).toHaveBeenCalledWith('/game-sessions/s1', { status: 'paused' })
   })
 
   it('useSessionBids fetches all bids of a session', async () => {

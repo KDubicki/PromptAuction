@@ -101,8 +101,9 @@ export function SubmitPromptPage() {
           Submit a prompt
         </Typography>
         <Typography sx={{ color: 'text.secondary', maxWidth: '60ch' }}>
-          Your prompt is the whole strategy. It drives an agent that bids blind against every other
-          agent — it never sees their numbers, and they never see yours.
+          Your prompt drives an agent that bids against every other agent. It sees the lot, the current
+          highest bid, the leader, and every player&apos;s budget and items — but never another player&apos;s
+          prompt.
         </Typography>
         <Typography sx={{ color: 'text.secondary', maxWidth: '60ch' }}>
           Your prompt is your agent: give it a persona and tell it what to look at and how to bid.
